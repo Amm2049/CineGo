@@ -530,58 +530,56 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* 5-Card Responsive Grid (Spec 1.3: Clean, Compact, Entire Card Clickable) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* 5-Card Responsive Grid (Exact Dimensions & Unified Optical Alignment) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
           {NOW_SHOWING_MOVIES.slice(0, 5).map((movie) => (
             <Link
               key={movie.id}
               href="/movies"
               className="glass-card rounded-2xl overflow-hidden flex flex-col group transition-all duration-300 hover:border-[#2500f0]/80 hover:shadow-xl hover:shadow-[#2500f0]/25 hover:-translate-y-1 block"
             >
-              {/* Poster Image Frame with Compact Aspect Ratio */}
-              <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#070924]">
+              {/* Poster Image Frame with Standard 2:3 Ratio */}
+              <div className="relative aspect-[2/3] w-full overflow-hidden bg-[#070924]">
                 <div
                   className="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-500"
                   style={{ backgroundImage: `url('${movie.image}')` }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#03030d] via-transparent to-black/30" />
 
-                {/* In-Line AI Match Badge (Spec 1.3 FR-02) */}
-                <div className="absolute top-2.5 left-2.5">
-                  <span className="bg-[#2500f0] text-white text-[10px] font-bold border-t border-white/40 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-[0_0_12px_rgba(37,0,240,0.8)]">
+                {/* Top Badge Bar: Horizontally & Vertically Aligned */}
+                <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2 z-10">
+                  <span className="bg-[#2500f0] text-white text-[10px] font-bold border-t border-white/40 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-[0_0_12px_rgba(37,0,240,0.8)] h-5.5 leading-none shrink-0">
                     🔥 {movie.matchScore}%
                   </span>
-                </div>
-
-                {/* Rating Badge */}
-                <div className="absolute top-2.5 right-2.5">
-                  <span className="bg-black/80 backdrop-blur-md text-white font-mono font-bold text-[10px] px-2 py-0.5 rounded border border-white/20">
+                  <span className="bg-black/80 backdrop-blur-md text-white font-mono font-bold text-[10px] px-2 py-0.5 rounded-md border border-white/20 h-5.5 flex items-center leading-none shrink-0">
                     {movie.rating}
                   </span>
                 </div>
 
-                {/* Format tag at bottom of poster */}
-                <div className="absolute bottom-2.5 left-2.5">
-                  <span className="text-[10px] bg-[#070924]/90 backdrop-blur-md text-[#e0e7ff] px-2 py-0.5 rounded-md font-bold border border-white/20">
+                {/* Format tag at bottom */}
+                <div className="absolute bottom-3 inset-x-3 flex items-center">
+                  <span className="text-[9px] uppercase tracking-wider bg-[#070924]/90 backdrop-blur-md text-[#e0e7ff] px-2 py-0.5 rounded-md font-bold border border-white/20 h-5 flex items-center leading-none">
                     {movie.formats[0]}
                   </span>
                 </div>
               </div>
 
-              {/* Movie Details (Compact, Clean, No Button Clutter) */}
-              <div className="p-3 space-y-1">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] text-[#a5b4fc] font-bold uppercase tracking-wider truncate">
-                    {movie.director}
-                  </span>
-                  <span className="text-xs font-black text-white shrink-0">
-                    From ฿{movie.startingPrice}
-                  </span>
+              {/* Movie Details (Balanced Typography with Stable Heights) */}
+              <div className="p-3.5 flex flex-col justify-between flex-1 space-y-2">
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] text-[#a5b4fc] font-bold uppercase tracking-wider truncate">
+                      {movie.director}
+                    </span>
+                    <span className="text-xs font-black text-white shrink-0">
+                      ฿{movie.startingPrice}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-black text-white group-hover:text-[#a5b4fc] transition-colors line-clamp-1 mt-1">
+                    {movie.title}
+                  </h3>
                 </div>
-                <h3 className="text-sm font-black text-white group-hover:text-[#a5b4fc] transition-colors line-clamp-1">
-                  {movie.title}
-                </h3>
-                <div className="text-[11px] text-[#c7d2fe] font-medium flex items-center gap-1.5 pt-0.5">
+                <div className="text-[11px] text-[#c7d2fe] font-medium flex items-center gap-1.5 pt-1 border-t border-white/10">
                   <span>{movie.runtime}</span>
                   <span>•</span>
                   <span className="line-clamp-1">{movie.genres.slice(0, 2).join(", ")}</span>
@@ -592,7 +590,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 5. UPCOMING RELEASES (HORIZONTAL SCROLL REEL - 5 MOVIES) ── */}
+      {/* ── 5. UPCOMING RELEASES (HORIZONTAL SCROLL REEL - IDENTICAL 5-CARD SIZING) ── */}
       <section className="w-full bg-[#050720]/80 border-t border-[#2500f0]/25 py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           <div className="flex items-end justify-between gap-4">
@@ -615,54 +613,57 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* Horizontal Reel (Spec 1.3: 5 Movies with AI Recommendation Badges) */}
-          <div className="flex gap-4 overflow-x-auto pb-4 pt-1 scrollbar-none snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
+          {/* Horizontal Reel (Identical Proportions to Now Screening) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
             {UPCOMING_MOVIES.slice(0, 5).map((movie) => (
               <Link
                 key={movie.id}
                 href="/movies"
-                className="glass-card rounded-2xl overflow-hidden flex flex-col shrink-0 w-[200px] sm:w-[220px] snap-start group hover:border-[#2500f0]/80 hover:shadow-xl hover:shadow-[#2500f0]/25 hover:-translate-y-1 transition-all duration-300 block"
+                className="glass-card rounded-2xl overflow-hidden flex flex-col group transition-all duration-300 hover:border-[#2500f0]/80 hover:shadow-xl hover:shadow-[#2500f0]/25 hover:-translate-y-1 block"
               >
-                {/* Poster Frame (Compact Aspect Ratio) */}
-                <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#070924]">
+                {/* Poster Frame with Exact 2:3 Ratio */}
+                <div className="relative aspect-[2/3] w-full overflow-hidden bg-[#070924]">
                   <div
                     className="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-500"
                     style={{ backgroundImage: `url('${movie.image}')` }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#03030d] via-transparent to-black/30" />
 
-                  {/* AI Match Badge on Upcoming */}
-                  <div className="absolute top-2.5 left-2.5">
-                    <span className="bg-[#2500f0] text-white text-[10px] font-bold border-t border-white/40 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-[0_0_12px_rgba(37,0,240,0.8)]">
+                  {/* Top Badge Bar: Exactly Centered & Horizontally Aligned */}
+                  <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2 z-10">
+                    <span className="bg-[#2500f0] text-white text-[10px] font-bold border-t border-white/40 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-[0_0_12px_rgba(37,0,240,0.8)] h-5.5 leading-none shrink-0">
                       🔥 {movie.matchScore}%
                     </span>
-                  </div>
-
-                  {/* Release Badge */}
-                  <div className="absolute top-2.5 right-2.5">
-                    <span className="bg-black/80 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/20">
-                      📅 {movie.releaseDate.split(",")[0]}
+                    <span className="bg-black/80 backdrop-blur-md text-white font-mono font-bold text-[10px] px-2 py-0.5 rounded-md border border-white/20 h-5.5 flex items-center leading-none shrink-0">
+                      {movie.releaseDate.split(",")[0]}
                     </span>
                   </div>
 
                   {/* Format tag */}
-                  <div className="absolute bottom-2.5 left-2.5">
-                    <span className="text-[10px] bg-[#070924]/90 backdrop-blur-md text-[#e0e7ff] px-2 py-0.5 rounded-md font-bold border border-white/20">
+                  <div className="absolute bottom-3 inset-x-3 flex items-center">
+                    <span className="text-[9px] uppercase tracking-wider bg-[#070924]/90 backdrop-blur-md text-[#e0e7ff] px-2 py-0.5 rounded-md font-bold border border-white/20 h-5 flex items-center leading-none">
                       {movie.format}
                     </span>
                   </div>
                 </div>
 
-                {/* Details (Compact, Clean, No Button Clutter) */}
-                <div className="p-3 space-y-1">
-                  <div className="text-[10px] text-[#a5b4fc] font-bold uppercase tracking-wider truncate">
-                    {movie.director}
+                {/* Details (Identical Heights and Layout) */}
+                <div className="p-3.5 flex flex-col justify-between flex-1 space-y-2">
+                  <div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] text-[#a5b4fc] font-bold uppercase tracking-wider truncate">
+                        {movie.director}
+                      </span>
+                      <span className="text-[10px] font-bold text-[#c7d2fe]/70 uppercase tracking-wider shrink-0">
+                        Coming Soon
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-black text-white group-hover:text-[#a5b4fc] transition-colors line-clamp-1 mt-1">
+                      {movie.title}
+                    </h3>
                   </div>
-                  <h3 className="text-sm font-black text-white group-hover:text-[#a5b4fc] transition-colors line-clamp-1">
-                    {movie.title}
-                  </h3>
-                  <div className="text-[11px] text-[#c7d2fe] font-medium truncate pt-0.5">
-                    {movie.genres.join(", ")}
+                  <div className="text-[11px] text-[#c7d2fe] font-medium truncate pt-1 border-t border-white/10">
+                    {movie.genres.slice(0, 2).join(", ")}
                   </div>
                 </div>
               </Link>
