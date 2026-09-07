@@ -1,36 +1,125 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎬 CineGo — Cinema Ticket Booking System
 
-## Getting Started
+A full-stack cinema ticket booking web application built with **Next.js App Router**, **TypeScript**, **Tailwind CSS**, **PostgreSQL + Prisma ORM**, **Auth.js**, and the **Google Gemini LLM API**.
 
-First, run the development server:
+---
+
+## ✨ Features
+
+| Feature | Status |
+|---|---|
+| 🤖 AI Movie Recommendations (Gemini) | Phase 6 |
+| 🎬 Movie Catalog & Showtime Browser | Phase 4 |
+| 💺 Interactive Seat Map + Dynamic Pricing | Phase 5 |
+| 🎟️ Digital QR Ticket Pass | Phase 7 |
+| 🔐 Auth + Role-Based Access | Phase 3 |
+| 🗄️ PostgreSQL + Prisma ORM | Phase 2 |
+| 📷 Admin WebCam QR Scanner | Phase 8 |
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework:** Next.js 16 (App Router) + TypeScript
+- **Styling:** Tailwind CSS v4 + Dark Cinema Theme
+- **Database:** PostgreSQL + Prisma ORM
+- **Auth:** Auth.js (NextAuth) + bcrypt
+- **AI:** Google Gemini LLM API (`@google/genai`)
+- **Testing:** Vitest + @testing-library/react + Playwright (E2E)
+- **Deployment:** Vercel + Supabase/Neon
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 22+
+- PostgreSQL database (local or Supabase/Neon)
+
+### Installation
 
 ```bash
+# 1. Clone the repository
+git clone <repo-url>
+cd cinego
+
+# 2. Install dependencies
+npm install
+
+# 3. Set up environment variables
+cp .env.example .env.local
+# Fill in .env.local with your values
+
+# 4. Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see CineGo.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🧪 Testing (TDD)
 
-## Learn More
+This project follows **Test-Driven Development (Red → Green → Refactor)**.
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Run all tests
+npm run test
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Watch mode
+npm run test:watch
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# With coverage report
+npm run test:coverage
 
-## Deploy on Vercel
+# Lint check
+npm run lint
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📁 Project Structure
+
+```
+src/
+├── app/                # Next.js App Router pages & API routes
+│   ├── (auth)/         # Login & Register
+│   ├── (customer)/     # Movies, seat map, tickets, checkout
+│   ├── admin/          # Admin dashboard & QR scanner
+│   └── api/            # API route handlers
+├── components/         # Reusable React UI components
+│   ├── ui/             # shadcn/ui primitives
+│   ├── layout/         # Navbar, Footer
+│   ├── movies/         # MovieCard, recommendation carousel
+│   ├── seatmap/        # Interactive seat grid
+│   └── admin/          # WebCam QR scanner
+├── lib/                # Infrastructure & utilities
+│   ├── prisma.ts       # Prisma client singleton
+│   ├── auth.ts         # Auth.js configuration
+│   ├── gemini.ts       # Gemini API client
+│   └── utils.ts        # cn(), formatDuration(), formatPrice()
+├── services/           # Business logic (separation of concerns)
+├── types/              # TypeScript interfaces
+└── tests/              # Unit, integration & E2E tests
+```
+
+---
+
+## 🗺️ Development Roadmap
+
+| Phase | Deliverable | Status |
+|---|---|---|
+| **Phase 1** | Project Setup & Clean Architecture | ✅ Done |
+| **Phase 2** | Database Schema & Seed Data | 🔜 |
+| **Phase 3** | Authentication & Security | 🔜 |
+| **Phase 4** | Movie Catalog & User Profile | 🔜 |
+| **Phase 5** | Seat Map & SWR Polling | 🔜 |
+| **Phase 6** | AI Recommendations (Gemini) | 🔜 |
+| **Phase 7** | Checkout, Concurrency & QR Ticket | 🔜 |
+| **Phase 8** | Admin Panel & WebCam Scanner | 🔜 |
+
+---
+
+## 📄 License
+
+MIT — Built for educational purposes at RSU Software Engineering.

@@ -1,26 +1,207 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ============================================================
+   CineGo — Electric Luxe (#2500f0) Glassmorphism Theme
+   - Buttons: Subtle hover with rich cobalt bloom (NO harsh white border)
+   - Badges & Chips: Option 1 Apple VisionOS specular top-rim lighting
+   - Text & Panels: High-contrast monochromatic Electric Cobalt
+   ============================================================ */
 
 @theme inline {
+  /* Base System Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Deep Cinema Canvas Palette */
+  --color-cinema-bg:          #03030d;   /* Deep High-Contrast Obsidian */
+  --color-cinema-surface:     #070820;   /* Frosted Deep Cobalt Glass */
+  --color-cinema-elevated:    #0d0f33;   /* Elevated Cobalt Layer */
+  --color-cinema-border:      rgba(37, 0, 240, 0.45); /* High-Definition Cobalt Border */
+  --color-cinema-border-subtle: rgba(255, 255, 255, 0.12);
+
+  /* Primary Brand Color: #2500f0 Electric Cobalt */
+  --color-accent:             #2500f0;   /* Pure Electric Cobalt */
+  --color-accent-hover:       #1e00c7;   /* Deep Cobalt */
+  --color-accent-bright:      #5938ff;   /* Luminous Electric Cobalt */
+  --color-accent-glow:        rgba(37, 0, 240, 0.75);
+
+  /* High-Luminance Monochromatic Tints (For Crisp Readability) */
+  --color-ice-cobalt:         #c7d2fe;   /* Indigo 200 - High-Contrast Text */
+  --color-ice-bright:         #e0e7ff;   /* Indigo 100 - Razor-Sharp Subtitles */
+  --color-amber-rating:       #fbbf24;   /* Star Ratings */
+
+  /* Text Hierarchy */
+  --color-text-primary:       #ffffff;
+  --color-text-secondary:     #e2e8f0;
+  --color-text-muted:         #94a3b8;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Force dark mode canvas */
+:root {
+  --background: #03030d;
+  --foreground: #ffffff;
+  color-scheme: dark;
+}
+
+html {
+  background-color: var(--background);
+  color: var(--foreground);
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans, Arial, Helvetica, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ── Specular Glassmorphism Panels ── */
+.glass-panel {
+  background: rgba(8, 9, 32, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.32); /* Specular Top Rim */
+  box-shadow: 0 10px 35px 0 rgba(0, 0, 0, 0.65),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.glass-panel-cobalt {
+  background: linear-gradient(
+    135deg,
+    rgba(14, 17, 56, 0.88) 0%,
+    rgba(6, 7, 26, 0.82) 100%
+  );
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(37, 0, 240, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.34); /* Specular Top Rim */
+  box-shadow: 0 14px 40px -5px rgba(0, 0, 0, 0.75),
+              0 0 30px -4px rgba(37, 0, 240, 0.35),
+              inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Card Hover: Smooth cobalt rim with gentle top reflection */
+.glass-card:hover {
+  background: rgba(37, 0, 240, 0.15);
+  border-color: rgba(89, 56, 255, 0.65);
+  border-top-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 35px -5px rgba(37, 0, 240, 0.55),
+              0 0 25px rgba(37, 0, 240, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* ── Option 1 Specular Top-Edge Rim Lighting for Badges & Chips ── */
+.glass-chip {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.25); /* Option 1 Specular Top Rim */
+  color: #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+/* Option 1 Hover for Badges & Chips: Brilliant White Specular Top Rim + Cobalt Glow */
+.glass-chip:hover {
+  background: rgba(37, 0, 240, 0.45);
+  border-color: #5938ff;
+  border-top-color: #ffffff; /* Option 1 Specular Top Rim on Hover */
+  color: #ffffff;
+  box-shadow: 0 0 25px rgba(37, 0, 240, 0.75),
+              inset 0 0 12px rgba(89, 56, 255, 0.4);
+}
+
+/* ── Refined Subtle Hover Button (Consistent #2500f0, NO White Box Border) ── */
+.btn-cobalt {
+  background: #2500f0;
+  color: #ffffff;
+  font-weight: 600;
+  border: 1px solid rgba(37, 0, 240, 0.9);
+  border-top: 1px solid rgba(255, 255, 255, 0.35); /* VisionOS top specular light bevel */
+  box-shadow: 0 4px 20px -2px rgba(37, 0, 240, 0.65),
+              inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Subtle Hover: Pure #2500f0 base, clean cobalt border, NO white box border */
+.btn-cobalt:hover {
+  background: #2e0dff; /* Pure electric cobalt lift */
+  border-color: #5938ff; /* Soft electric cobalt border (NO harsh white border) */
+  border-top-color: rgba(255, 255, 255, 0.45); /* Subtle specular top highlight */
+  box-shadow: 0 6px 28px rgba(37, 0, 240, 0.85),
+              0 0 15px rgba(89, 56, 255, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  transform: translateY(-1.5px);
+}
+
+.btn-cobalt:active {
+  transform: translateY(0);
+  background: #1e00c7;
+  box-shadow: 0 2px 12px rgba(37, 0, 240, 0.6);
+}
+
+/* ── High-Definition Text & Glow Utilities ── */
+.cobalt-glow {
+  box-shadow: 0 0 30px rgba(37, 0, 240, 0.85),
+              0 0 60px rgba(37, 0, 240, 0.45);
+}
+
+.cobalt-text-glow {
+  text-shadow: 0 0 14px rgba(89, 56, 255, 0.95),
+               0 0 30px rgba(37, 0, 240, 0.8);
+}
+
+/* Cinema Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #03030d;
+}
+::-webkit-scrollbar-thumb {
+  background: #121545;
+  border-radius: 9999px;
+  border: 1px solid rgba(37, 0, 240, 0.5);
+  box-shadow: 0 0 8px rgba(37, 0, 240, 0.6);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2500f0;
+  box-shadow: 0 0 18px rgba(37, 0, 240, 1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.7s ease-in-out forwards;
 }
