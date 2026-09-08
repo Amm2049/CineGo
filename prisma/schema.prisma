@@ -1,0 +1,169 @@
+// prisma/schema.prisma
+// CineGo — Database Schema (Phase 2)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ──────────────────────────────────────────────────
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+}
+
+enum TicketStatus {
+  ACTIVE
+  USED
+}
+
+// ── Models ─────────────────────────────────────────────────
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  role         Role           @default(CUSTOMER)
+  createdAt    DateTime       @default(now())
+  bookings     Booking[]
+  interests    UserInterest[]
+}
+
+model Genre {
+  id     String         @id @default(uuid())
+  name   String         @unique
+  movies MovieGenre[]
+  users  UserInterest[]
+}
+
+model UserInterest {
+  userId  String
+  genreId String
+  user    User   @relation(fields: [userId], references: [id])
+  genre   Genre  @relation(fields: [genreId], references: [id])
+
+  @@id([userId, genreId])
+}
+
+model Movie {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  duration    Int
+  releaseDate DateTime
+  posterUrl   String
+  backdropUrl String
+  genres      MovieGenre[]
+  showtimes   Showtime[]
+}
+
+model MovieGenre {
+  movieId String
+  genreId String
+  movie   Movie  @relation(fields: [movieId], references: [id])
+  genre   Genre  @relation(fields: [genreId], references: [id])
+
+  @@id([movieId, genreId])
+}
+
+model Cinema {
+  id       String   @id @default(uuid())
+  name     String
+  location String
+  screens  Screen[]
+}
+
+model Screen {
+  id        String     @id @default(uuid())
+  cinemaId  String
+  name      String
+  cinema    Cinema     @relation(fields: [cinemaId], references: [id])
+  seats     Seat[]
+  showtimes Showtime[]
+}
+
+model Seat {
+  id        String        @id @default(uuid())
+  screenId  String
+  rowLabel  String
+  seatNum   Int
+  price     Decimal
+  screen    Screen        @relation(fields: [screenId], references: [id])
+  bookings  BookingSeat[]
+}
+
+model Showtime {
+  id        String        @id @default(uuid())
+  movieId   String
+  screenId  String
+  startsAt  DateTime
+  endsAt    DateTime
+  movie     Movie         @relation(fields: [movieId], references: [id])
+  screen    Screen        @relation(fields: [screenId], references: [id])
+  bookings  Booking[]
+  seats     BookingSeat[]
+}
+
+model Booking {
+  id          String        @id @default(uuid())
+  userId      String
+  showtimeId  String
+  status      BookingStatus @default(PENDING)
+  totalAmount Decimal
+  createdAt   DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id])
+  showtime    Showtime      @relation(fields: [showtimeId], references: [id])
+  seats       BookingSeat[]
+  payment     Payment?
+  ticket      Ticket?
+}
+
+model BookingSeat {
+  id              String   @id @default(uuid())
+  bookingId       String
+  showtimeId      String
+  seatId          String
+  priceAtPurchase Decimal
+  heldUntil       DateTime?
+  booking         Booking  @relation(fields: [bookingId], references: [id])
+  showtime        Showtime @relation(fields: [showtimeId], references: [id])
+  seat            Seat     @relation(fields: [seatId], references: [id])
+
+  @@unique([showtimeId, seatId])
+}
+
+model Payment {
+  id                   String        @id @default(uuid())
+  bookingId            String        @unique
+  status               PaymentStatus
+  amount               Decimal
+  transactionReference String        @unique
+  paidAt               DateTime      @default(now())
+  booking              Booking       @relation(fields: [bookingId], references: [id])
+}
+
+model Ticket {
+  id         String       @id @default(uuid())
+  bookingId  String       @unique
+  ticketCode String       @unique
+  qrPayload  String
+  status     TicketStatus @default(ACTIVE)
+  issuedAt   DateTime     @default(now())
+  booking    Booking      @relation(fields: [bookingId], references: [id])
+}

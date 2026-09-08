@@ -1,5 +1,18 @@
 // src/lib/prisma.ts
-// Stub — Prisma client singleton will be implemented in Phase 2
-// TODO: Phase 2 — Install @prisma/client and initialize PrismaClient singleton here
+// Prisma 7 Client singleton with PostgreSQL adapter — safe for Next.js hot-reload in development
 
-export {};
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+
+function createPrismaClient() {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  return new PrismaClient({ adapter });
+}
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+export default prisma;
