@@ -220,6 +220,8 @@ model Showtime {
   screen    Screen        @relation(fields: [screenId], references: [id])
   bookings  Booking[]
   seats     BookingSeat[]
+
+  @@index([movieId, startsAt])
 }
 
 model Booking {
@@ -234,6 +236,8 @@ model Booking {
   seats       BookingSeat[]
   payment     Payment?
   ticket      Ticket?
+
+  @@index([userId])
 }
 
 enum BookingStatus {

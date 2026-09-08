@@ -192,6 +192,8 @@ model Showtime {
   screen    Screen        @relation(fields: [screenId], references: [id])
   bookings  Booking[]
   seats     BookingSeat[]
+
+  @@index([movieId, startsAt])
 }
 
 model Booking {
@@ -206,6 +208,8 @@ model Booking {
   seats       BookingSeat[]
   payment     Payment?
   ticket      Ticket?
+
+  @@index([userId])
 }
 
 model BookingSeat {
@@ -406,16 +410,16 @@ async function main() {
   }
 
   // ── 3. Seats (Rows A–F, 10 seats/row, row-based pricing) ──
-  //    Front  (A–B): ฿150
-  //    Middle (C–D): ฿200
-  //    Back   (E–F): ฿280  (premium)
+  //    Premium (A–B): ฿280
+  //    Standard Plus (C–D): ฿200
+  //    Standard (E–F): ฿150
   const rowPricing: Record<string, number> = {
-    A: 150,
-    B: 150,
+    A: 280,
+    B: 280,
     C: 200,
     D: 200,
-    E: 280,
-    F: 280,
+    E: 150,
+    F: 150,
   };
 
   let totalSeats = 0;
@@ -460,79 +464,79 @@ async function main() {
   // ── 5. Movies ───────────────────────────────────────────
   const now = new Date();
   const movies = [
-    // Now Screening (releaseDate in the past)
+    // Now Screening (real recent blockbusters currently in cinemas)
     {
-      title: 'Neon Horizon',
-      description: 'A rogue pilot discovers a hidden dimension beyond the neon-lit skyline of Neo-Tokyo, where reality bends and time fractures.',
-      duration: 138,
-      releaseDate: new Date(now.getFullYear(), now.getMonth() - 2, 10),
-      posterUrl: 'https://placehold.co/400x600/1a1a2e/e94560?text=Neon+Horizon',
-      backdropUrl: 'https://placehold.co/1280x720/1a1a2e/e94560?text=Neon+Horizon+Hero',
-      genres: ['Action', 'Sci-Fi'],
+      title: 'Deadpool & Wolverine',
+      description: 'A listless Wade Wilson toils away in civilian life with his days as Deadpool behind him. But when his homeworld faces an existential threat, Wade must reluctantly suit-up again with an even more reluctant Wolverine.',
+      duration: 128,
+      releaseDate: new Date(2024, 6, 26),
+      posterUrl: 'https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg',
+      genres: ['Action', 'Comedy', 'Sci-Fi'],
     },
     {
-      title: 'The Last Encore',
-      description: 'An aging jazz musician gets one final chance to perform at the legendary Blue Moon Theatre, confronting old rivals and lost love.',
-      duration: 112,
-      releaseDate: new Date(now.getFullYear(), now.getMonth() - 1, 5),
-      posterUrl: 'https://placehold.co/400x600/16213e/0f3460?text=The+Last+Encore',
-      backdropUrl: 'https://placehold.co/1280x720/16213e/0f3460?text=The+Last+Encore+Hero',
-      genres: ['Drama', 'Romance'],
+      title: 'Gladiator II',
+      description: 'Years after witnessing the death of Maximus, Lucius is forced to enter the Colosseum after his home is conquered by tyrannical emperors who lead Rome with an iron fist, fighting to restore glory to the Empire.',
+      duration: 148,
+      releaseDate: new Date(2024, 10, 22),
+      posterUrl: 'https://image.tmdb.org/t/p/w500/2cxhvwyEwRlysAmRH4iodkvo0z5.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/tOqIwliWMovSIZ9DyvHcHI7p2im.jpg',
+      genres: ['Action', 'Drama'],
     },
     {
-      title: 'Phantom Protocol',
-      description: 'When a covert intelligence network is compromised, a disgraced agent must go off-grid to expose a conspiracy that reaches the highest levels of government.',
-      duration: 126,
-      releaseDate: new Date(now.getFullYear(), now.getMonth() - 1, 20),
-      posterUrl: 'https://placehold.co/400x600/0a1628/e23e57?text=Phantom+Protocol',
-      backdropUrl: 'https://placehold.co/1280x720/0a1628/e23e57?text=Phantom+Protocol+Hero',
-      genres: ['Thriller', 'Action'],
+      title: 'Wicked',
+      description: 'In the land of Oz, misunderstood green-skinned Elphaba forms an unlikely friendship with popular Glinda at Shiz University, tested as they fulfill their respective destinies as Glinda the Good and the Wicked Witch of the West.',
+      duration: 161,
+      releaseDate: new Date(2024, 10, 22),
+      posterUrl: 'https://image.tmdb.org/t/p/w500/xDGbZ0JJ3mYaGKy4Nzd9Kph6M9L.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/fyZ6SDUS4o9jp2EHxfZa3qS9ean.jpg',
+      genres: ['Fantasy', 'Drama', 'Romance'],
     },
     {
-      title: 'Laughing Shadows',
-      description: 'A stand-up comedian accidentally witnesses a crime and must survive the night while keeping the audience laughing.',
-      duration: 98,
-      releaseDate: new Date(now.getFullYear(), now.getMonth(), 1),
-      posterUrl: 'https://placehold.co/400x600/2d3436/fdcb6e?text=Laughing+Shadows',
-      backdropUrl: 'https://placehold.co/1280x720/2d3436/fdcb6e?text=Laughing+Shadows+Hero',
-      genres: ['Comedy', 'Thriller'],
+      title: 'The Wild Robot',
+      description: 'After a shipwreck, an intelligent robot called Roz is stranded on an uninhabited island and bonds with the island animals, adopting an orphaned baby goose in a moving tale of survival and connection.',
+      duration: 102,
+      releaseDate: new Date(2024, 8, 27),
+      posterUrl: 'https://image.tmdb.org/t/p/w500/wTnV3PCVW5O92JMrFvvrRcV39RU.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/1pmXyN3sKeYoUhu5VBZiDU4BX21.jpg',
+      genres: ['Animation', 'Sci-Fi', 'Drama'],
     },
     {
-      title: 'Whispers in the Hollow',
-      description: 'A family moves into a centuries-old farmhouse only to discover the walls hold memories — and something that remembers them back.',
-      duration: 104,
-      releaseDate: new Date(now.getFullYear(), now.getMonth(), 5),
-      posterUrl: 'https://placehold.co/400x600/1b1b2f/e43f5a?text=Whispers+in+the+Hollow',
-      backdropUrl: 'https://placehold.co/1280x720/1b1b2f/e43f5a?text=Whispers+in+the+Hollow+Hero',
-      genres: ['Horror'],
+      title: 'Captain America: Brave New World',
+      description: 'Sam Wilson finds himself in the middle of an international incident after meeting with newly elected U.S. President Thaddeus Ross, uncovering a nefarious global plot before the mastermind behind it can plunge the world into chaos.',
+      duration: 118,
+      releaseDate: new Date(2025, 1, 14),
+      posterUrl: 'https://image.tmdb.org/t/p/w500/pzIddUEMWhWzfvLI3TwxUG2wGoi.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg',
+      genres: ['Action', 'Sci-Fi', 'Thriller'],
     },
     // Upcoming Releases (releaseDate in the future)
     {
-      title: 'Starforged',
-      description: 'In a galaxy where stars are forged into weapons, a young blacksmith holds the key to ending an interstellar war.',
-      duration: 145,
-      releaseDate: new Date(now.getFullYear(), now.getMonth() + 2, 15),
-      posterUrl: 'https://placehold.co/400x600/0c0c1d/7f5af0?text=Starforged',
-      backdropUrl: 'https://placehold.co/1280x720/0c0c1d/7f5af0?text=Starforged+Hero',
-      genres: ['Sci-Fi', 'Fantasy', 'Action'],
+      title: 'Superman',
+      description: 'Superman, a journalist in Metropolis, embarks on a journey to reconcile his Kryptonian heritage with his human upbringing as Clark Kent in James Gunn new DC Universe vision.',
+      duration: 135,
+      releaseDate: new Date(now.getFullYear() + 1, 6, 11),
+      posterUrl: 'https://image.tmdb.org/t/p/w500/ldyfo0BKmz5rWtJJKCvwaNS4cJT.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/yRBc6WY3r1Fz5Cjd6DhSvzqunED.jpg',
+      genres: ['Action', 'Sci-Fi'],
     },
     {
-      title: 'The Panda Express',
-      description: 'A clumsy panda delivery driver accidentally picks up a mysterious package that sends him on a wild cross-country adventure.',
-      duration: 95,
-      releaseDate: new Date(now.getFullYear(), now.getMonth() + 3, 1),
-      posterUrl: 'https://placehold.co/400x600/2d3436/00b894?text=The+Panda+Express',
-      backdropUrl: 'https://placehold.co/1280x720/2d3436/00b894?text=The+Panda+Express+Hero',
-      genres: ['Animation', 'Comedy'],
+      title: 'The Fantastic Four: First Steps',
+      description: 'Set against the vibrant backdrop of a 1960s retro-futuristic world, Marvel First Family must balance their roles as superheroes and a tight-knit family while defending Earth against the cosmic entity Galactus.',
+      duration: 130,
+      releaseDate: new Date(now.getFullYear() + 1, 6, 25),
+      posterUrl: 'https://image.tmdb.org/t/p/w500/veiSodk4JS4M2kBZCqBWeEEdMCr.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/pwCZP8QjiQRvz15MGxQckW0wl3a.jpg',
+      genres: ['Action', 'Sci-Fi', 'Fantasy'],
     },
     {
-      title: 'Beyond the Ice Wall',
-      description: 'A documentary crew ventures to the unexplored edges of Antarctica and captures footage that challenges everything we know about Earth\'s history.',
-      duration: 110,
-      releaseDate: new Date(now.getFullYear(), now.getMonth() + 4, 10),
-      posterUrl: 'https://placehold.co/400x600/206a5d/bef992?text=Beyond+the+Ice+Wall',
-      backdropUrl: 'https://placehold.co/1280x720/206a5d/bef992?text=Beyond+the+Ice+Wall+Hero',
-      genres: ['Documentary'],
+      title: 'Avengers: Doomsday',
+      description: 'Beloved heroes from distinct universes are set on a deadly collision course and face an existential threat unlike anything they have ever encountered as Doctor Doom rises to reshape reality.',
+      duration: 165,
+      releaseDate: new Date(now.getFullYear() + 1, 10, 1),
+      posterUrl: 'https://image.tmdb.org/t/p/w500/jzPwsojjFStf5lR5Nm07w2hH56G.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/s4v0UX1anfXm0UvloLsTTJ4v222.jpg',
+      genres: ['Action', 'Sci-Fi', 'Fantasy'],
     },
   ];
 
@@ -590,7 +594,7 @@ This opens a web UI at `http://localhost:5555`. Check:
 - [ ] **Cinema** table → 1 row ("CineGo Flagship")
 - [ ] **Screen** table → 4 rows (IMAX Laser, Dolby Cinema, 4DX Motion, Standard)
 - [ ] **Seat** table → 240 rows (60 per screen, Rows A–F, 10 seats/row)
-- [ ] **Seat prices** → A/B rows = 150, C/D rows = 200, E/F rows = 280
+- [ ] **Seat prices** → A/B rows = 280, C/D rows = 200, E/F rows = 150
 - [ ] **Genre** table → 10 rows
 - [ ] **Movie** table → 8 rows (5 now screening, 3 upcoming)
 - [ ] **MovieGenre** table → genre associations for each movie
