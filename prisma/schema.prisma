@@ -63,6 +63,7 @@ model UserInterest {
 
 model Movie {
   id          String       @id @default(uuid())
+  tmdbId      Int?         @unique
   title       String
   description String
   duration    Int
