@@ -1,5 +1,5 @@
 # CINEMA TICKET BOOKING SYSTEM (CineGo)
-## Full Software Engineering Project Scope & MVP Specification (Version 1.3 Final)
+## Full Software Engineering Project Scope & MVP Specification (Version 1.4)
 
 | Metadata Field | Value |
 | :--- | :--- |
@@ -8,14 +8,14 @@
 | **PROJECT MODEL** | Solo Project / Small Team MVP |
 | **ARCHITECTURE** | Layered Monolithic Architecture (Clean Code & SE Best Practices) |
 | **PRIMARY ROLES** | Customer + Admin |
-| **DOCUMENT VERSION** | 1.3 (Finalized Scope, 13-Page Layout & GitFlow Workflow) |
+| **DOCUMENT VERSION** | 1.4 (TMDB Ingestion + Derived Movie Status + DB Seat Hold — upgraded from v1.3) |
 
 ---
 
 ## 1. Executive Summary
-The **Cinema Ticket Booking System (CineGo)** is a full-stack web application built with **Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, PostgreSQL, Prisma ORM, Auth.js, and Google Gemini LLM API**. 
+The **Cinema Ticket Booking System (CineGo)** is a full-stack web application built with **Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, PostgreSQL, Prisma ORM, Auth.js, Google Gemini LLM API, and TMDB REST API**. 
 
-The platform enables customers to discover movies, view in-line AI match recommendations (`🔥 95% AI Match`), explore cinema screen formats on an Experiences FYI page, select seats on an interactive layout with dynamic row pricing, temporarily hold seats during checkout, complete a simulated payment, and receive a digital ticket pass containing a scannable QR code. Administrators manage movies, screens, showtimes, and verify customer tickets using an integrated **Camera WebCam QR Scanner**.
+The platform enables customers to discover movies (ingested from TMDB), view in-line AI match recommendations (`🔥 95% AI Match`), explore cinema screen formats on an Experiences FYI page, select seats on an interactive layout with dynamic row pricing, temporarily hold seats during checkout, complete a simulated payment, and receive a digital ticket pass containing a scannable QR code. Movie availability status ("Now Showing" vs. "Upcoming") is computed dynamically from `releaseDate` and active showtime existence — never stored as a manual flag. Administrators import movies directly from TMDB, manage showtimes, and verify customer tickets using an integrated **Camera WebCam QR Scanner**.
 
 ---
 
@@ -40,10 +40,12 @@ src/
 ├── lib/                        # Infrastructure & Utilities
 │   ├── prisma.ts               # Prisma client singleton
 │   ├── auth.ts                 # Auth.js / NextAuth configuration
-│   └── gemini.ts               # Google Gemini LLM API client wrapper
+│   ├── gemini.ts               # Google Gemini LLM API client wrapper
+│   └── tmdb.ts                 # TMDB REST API client wrapper (movie import)
 ├── services/                   # Business Logic & Domain Services (Separation of Concerns)
 │   ├── recommendation.service.ts
 │   ├── booking.service.ts
+│   ├── seat.service.ts         # Seat hold (heldUntil) & availability logic
 │   └── ticket.service.ts
 └── types/                      # TypeScript interfaces & type definitions
 ```
@@ -78,7 +80,8 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 | **AI Recommendation** | Google Gemini LLM API (`@google/genai`) | Structured JSON generation for movie match scores (%) and 1-sentence AI explanations rendered as **In-Line Badges**. |
 | **Authentication** | Auth.js (NextAuth) + bcrypt | Hashed credentials & role-based route protection (`CUSTOMER`, `ADMIN`). |
 | **QR Code System** | `qrcode.react` + `html5-qrcode` | `qrcode.react` renders ticket QR codes; `html5-qrcode` powers the WebCam Scanner. |
-| **Media Handling** | External Image URLs | Movie poster (portrait) & hero/backdrop (landscape) images linked via CDN/Unsplash/TMDB URLs. |
+| **Movie Data** | TMDB REST API | Admin imports movies by searching TMDB title; metadata (title, overview, runtime, release date, poster, backdrop, genres) is fetched and upserted via `tmdbId`. `next.config.ts` already whitelists `image.tmdb.org`. |
+| **Media Handling** | External Image URLs | Movie poster (portrait) & hero/backdrop (landscape) images linked via TMDB CDN URLs (`image.tmdb.org`). |
 | **Testing & CI/CD** | Vitest + Playwright + GitHub Actions | Unit, integration, E2E, and concurrency testing with automated CI on Vercel. |
 
 ---
@@ -86,8 +89,8 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 ## 4. Final 13-Page Inventory & Feature Scope
 
 ### 🌐 4.1 Customer Pages (7 Pages)
-1. **Homepage (`/`):** Hero Banner (featured blockbuster) + 5-card Now Screening preview + 5-card Anticipated Premieres preview (both with in-line `🔥 {matchScore}%` AI recommendation badges and fully clickable cards without inner button clutter) + *"View All Movies →"* and *"Explore All Upcoming →"* CTAs.
-2. **Movies Catalog Page (`/movies`):** Clean 2-tab view (`[ 🍿 Now Screening ]` vs `[ 📅 Upcoming Releases ]`) displaying active cinema movies with AI match badges.
+1. **Homepage (`/`):** Hero Banner (featured blockbuster) + 5-card Now Showing preview + 5-card Upcoming Releases preview (both with in-line `🔥 {matchScore}%` AI recommendation badges and fully clickable cards without inner button clutter) + *"View All Movies →"* and *"Explore All Upcoming →"* CTAs. Movie lists are fetched live from the database — **"Now Showing"** = `releaseDate ≤ today AND has at least one future showtime`; **"Upcoming"** = `releaseDate > today`. No status flags stored.
+2. **Movies Catalog Page (`/movies`):** Clean 2-tab view (`[ 🍿 Now Showing ]` vs `[ 📅 Upcoming Releases ]`) displaying movies queried dynamically from the database with derived status logic and AI match badges.
 3. **Experiences FYI Page (`/experiences`):** Informational page highlighting cinema screen formats (IMAX Laser, Dolby Cinema, 4DX Motion, VIP Lounge).
 4. **Seat Selection & Checkout (`/checkout/[showtimeId]`):** Interactive seat map, dynamic row pricing, 5-minute seat hold timer (`heldUntil`), SWR polling, and simulated payment confirmation.
 5. **Digital Ticket Pass (`/tickets/[id]`):** Rendered scannable QR code pass (`qrcode.react`), seat details, screen number, and booking reference.
@@ -100,7 +103,7 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 
 ### 🛠️ 4.3 Admin Pages (4 Pages)
 10. **Admin Dashboard (`/admin`):** Operational overview metrics (total movies, showtimes, revenue).
-11. **Manage Movies (`/admin/movies`):** Add, edit, or deactivate movies, poster URLs, and backdrop URLs.
+11. **Manage Movies (`/admin/movies`):** Import movies from TMDB by searching title — admin selects a result and clicks Import to upsert movie data (title, description, runtime, release date, poster, backdrop, genres) via `POST /api/admin/movies/sync`. Existing imported movies can be edited or deactivated.
 12. **Manage Showtimes (`/admin/showtimes`):** Create showtime schedules per screen with overlap validation.
 13. **WebCam QR Ticket Scanner (`/admin/scanner`):** Live camera WebCam QR scanner (`html5-qrcode`) + manual ticket code input fallback to verify entry (`VALID`, `INVALID`, `ALREADY USED`).
 
@@ -110,12 +113,13 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 
 * **FR-01 (Auth):** Passwords stored as bcrypt hashes; roles enforced server-side.
 * **FR-02 (In-Line AI Recommendations):** `/api/recommendations` invokes Gemini API with user interests & booking history, returning structured JSON (`movieId`, `matchScore`, `reason`) rendered as glowing **In-Line AI Match Badges** on movie cards.
-* **FR-03 (Movie & Showtime Browsing):** Customers browse movies on `/` and `/movies`, and view showtimes per screen.
+* **FR-03 (Movie & Showtime Browsing):** Customers browse movies on `/` and `/movies`. Movie availability status is **derived at query time** — never stored as a field. "Now Showing" = `releaseDate ≤ today AND showtimes.some(startsAt ≥ today)`. "Upcoming" = `releaseDate > today`.
 * **FR-04 (Experiences FYI):** Informational page (`/experiences`) explaining screen technologies (IMAX, Dolby, 4DX, VIP).
 * **FR-05 (Seat Selection & Dynamic Pricing):** Interactive seat map calculates price totals based on row pricing rules.
-* **FR-06 (Concurrency & Holds):** Seats held for 5 minutes via `heldUntil`. Database transaction guarantees atomic confirmation. `@@unique([showtimeId, seatId])` prevents double-booking.
+* **FR-06 (Concurrency & Holds):** Seats held for 5 minutes via `heldUntil` (set to `NOW + 5min` on seat selection, cleared on expiry or payment). Database transaction guarantees atomic confirmation. `@@unique([showtimeId, seatId])` prevents double-booking.
 * **FR-07 (Digital Ticket & QR):** Paid bookings generate digital tickets with rendered QR code passes.
-* **FR-08 (Admin Scanner & CRUD):** Admin WebCam QR Scanner reads QR tokens or manual ticket codes and displays ticket validation results. Admin manages Movies, Screens, and Showtimes.
+* **FR-08 (Admin Scanner & CRUD):** Admin WebCam QR Scanner reads QR tokens or manual ticket codes and displays ticket validation results. Admin manages Showtimes via form-based CRUD.
+* **FR-09 (TMDB Movie Ingestion):** Admin imports movies via `POST /api/admin/movies/sync` by searching TMDB. The API fetches movie metadata from TMDB, maps genre names, and upserts the `Movie` record using `tmdbId` as the unique key to prevent duplicates.
 
 ---
 
@@ -165,6 +169,7 @@ model UserInterest {
 
 model Movie {
   id          String       @id @default(uuid())
+  tmdbId      Int?         @unique
   title       String
   description String
   duration    Int
@@ -299,7 +304,9 @@ enum TicketStatus {
 1. **Deployed Application:** Deployed Next.js full-stack web application on Vercel.
 2. **Database & ORM:** PostgreSQL database hosted on Supabase/Neon with Prisma migrations & seed data.
 3. **Clean Code & GitFlow:** Modular directory structure following SE best practices with disciplined 4-tier `main` $\rightarrow$ `develop` $\rightarrow$ `phase/*` (permanent) $\rightarrow$ `feature/*` (temporary) Git branching.
-4. **AI Recommendation Badges:** Gemini LLM API integration rendering in-line AI match badges and 1-sentence insights.
-5. **Seat Concurrency Protection:** PostgreSQL transaction and constraint protection against double-booking.
-6. **Digital QR Ticket & WebCam Scanner:** Working digital ticket with rendered QR code and an Admin Camera WebCam ticket scanner.
-7. **Testing Suite:** Automated unit/integration tests with Vitest and E2E concurrency tests with Playwright.
+4. **TMDB Movie Ingestion:** Admin `/admin/movies` page with TMDB search-and-import flow; `Movie.tmdbId` prevents duplicate imports.
+5. **Derived Movie Status:** "Now Showing" and "Upcoming" sections on homepage and catalog page driven by live Prisma queries — no stored status flags.
+6. **AI Recommendation Badges:** Gemini LLM API integration rendering in-line AI match badges and 1-sentence insights.
+7. **Seat Concurrency Protection:** PostgreSQL `heldUntil` seat hold (5-minute TTL) + transaction and unique constraint protection against double-booking.
+8. **Digital QR Ticket & WebCam Scanner:** Working digital ticket with rendered QR code and an Admin Camera WebCam ticket scanner.
+9. **Testing Suite:** Automated unit/integration tests with Vitest and E2E concurrency tests with Playwright.

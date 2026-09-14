@@ -1,5 +1,5 @@
 # CINEMA TICKET BOOKING SYSTEM (CineGo)
-## Phase-by-Phase Modular Development Roadmap (`CiniGo_Phase_Plan.md` v1.3 Final)
+## Phase-by-Phase Modular Development Roadmap (`CiniGo_Phase_Plan.md` v1.4)
 
 This roadmap divides the project into **8 manageable, self-contained phases** using a disciplined 4-tier **Phase-Based GitFlow branching model (`main` $\rightarrow$ `develop` $\rightarrow$ `phase/*` $\rightarrow$ `feature/*`)**. Each phase contains explicit deliverables, task checklists, Git branching instructions, and verification steps.
 
@@ -59,19 +59,19 @@ Create permanent milestone branch `phase/phase2-database` off `develop`. Define 
   * Write `prisma/schema.prisma` with core entities:
     * `User`, `Role`, `Genre`, `UserInterest`
     * `Cinema`, `Screen`, `Seat`
-    * `Movie`, `MovieGenre`, `Showtime`
-    * `Booking`, `BookingSeat`, `Payment`, `Ticket`
+    * `Movie` (include `tmdbId Int? @unique` for TMDB import deduplication), `MovieGenre`, `Showtime`
+    * `Booking`, `BookingSeat` (include `heldUntil DateTime?`), `Payment`, `Ticket`
   * Enforce PostgreSQL unique constraint on `BookingSeat`: `@@unique([showtimeId, seatId])`.
   * Execute initial migration: `npx prisma migrate dev --name init`.
   * Merge `feature/prisma-schema` into `phase/phase2-database` and delete feature branch.
 * [ ] Branch `feature/seed-data` off `phase/phase2-database`:
-  * Write `prisma/seed.ts` script to populate screens, seat layouts (Rows A–F with row pricing), genres, and sample movies.
+  * Write `prisma/seed.ts` script to populate screens, seat layouts (Rows A–F with row pricing), genres, and sample movies (with real TMDB poster URLs as placeholders — will be replaced by live TMDB import in Phase 8).
   * Run seed script (`npx prisma db seed`).
   * Merge `feature/seed-data` into `phase/phase2-database` and delete feature branch.
 * [ ] Merge `phase/phase2-database` into `develop` and preserve `phase/phase2-database` on GitHub.
 
 ### ✅ Verification Checkpoint
-* Inspect database via `npx prisma studio`. Confirm `BookingSeat` unique index exists in PostgreSQL.
+* Inspect database via `npx prisma studio`. Confirm `BookingSeat` unique index exists and `Movie.tmdbId` column is present in PostgreSQL.
 
 ---
 
@@ -107,12 +107,13 @@ Create permanent milestone branch `phase/phase4-movies` off `develop`. Build the
 ### 📋 Checklist & Tasks
 * [ ] Create milestone branch `phase/phase4-movies` off `develop`.
 * [ ] Branch `feature/homepage-catalog` off `phase/phase4-movies`:
-  * Build Homepage (`/`):
-    * Hero Banner (featured blockbuster).
-    * 5-card Now Screening preview (with in-line `🔥 AI Match` badges and fully clickable cards, no inner buttons) + *"View All Movies →"* CTA.
-    * 5-card Anticipated Premieres preview (with in-line `🔥 AI Match` badges and fully clickable cards, no inner buttons) + *"Explore All Upcoming →"* CTA.
+  * Build Homepage (`/`) as a **Server Component**:
+    * Hero Banner (featured blockbuster — first "Now Showing" movie from DB).
+    * 5-card **Now Showing** preview: Prisma query `WHERE releaseDate ≤ today AND showtimes.some(startsAt ≥ today)`, with in-line `🔥 AI Match` badges, fully clickable cards + *"View All Movies →"* CTA.
+    * 5-card **Upcoming Releases** preview: Prisma query `WHERE releaseDate > today`, with in-line `🔥 AI Match` badges, fully clickable cards + *"Explore All Upcoming →"* CTA.
+    * Extract interactive parts (e.g., hero carousel state) into a dedicated Client Component; keep data-fetching in the Server Component.
   * Build Movies Catalog Page (`/movies`):
-    * Clean 2-tab layout: `[ 🍿 Now Screening ]` vs `[ 📅 Upcoming Releases ]`.
+    * Clean 2-tab layout: `[ 🍿 Now Showing ]` vs `[ 📅 Upcoming Releases ]` — both tabs fetch from DB using the same derived status queries. No static/hardcoded data.
   * Merge `feature/homepage-catalog` into `phase/phase4-movies` and delete feature branch.
 * [ ] Branch `feature/experiences-profile` off `phase/phase4-movies`:
   * Build Experiences Page (`/experiences`): FYI showcase for IMAX Laser, Dolby Cinema, 4DX Motion, and VIP Lounge.
@@ -122,6 +123,7 @@ Create permanent milestone branch `phase/phase4-movies` off `develop`. Build the
 
 ### ✅ Verification Checkpoint
 * Verify navigation across Home, Movies (2-tab catalog), Experiences, and Profile pages.
+* Confirm "Now Showing" and "Upcoming" tabs reflect actual DB data — add/remove a showtime and confirm the movie moves between tabs without any code change.
 * Confirm favorite genre selections persist in database.
 
 ---
@@ -158,8 +160,14 @@ Create permanent milestone branch `phase/phase6-seatmap` off `develop`. Implemen
 ### 📋 Checklist & Tasks
 * [ ] Create milestone branch `phase/phase6-seatmap` off `develop`.
 * [ ] Branch `feature/seatmap-api` off `phase/phase6-seatmap`:
-  * Build `/api/showtimes/[id]/seats` GET endpoint returning current seat grid & availability status.
-  * Implement temporary seat hold reservation logic (`heldUntil = NOW + 5 minutes`).
+  * Build `GET /api/showtimes/[id]/seats` endpoint: returns full seat grid with status per seat:
+    * `BOOKED` — `BookingSeat` record exists with a `PAID` booking.
+    * `HELD` — `BookingSeat` record exists with `heldUntil > NOW` (active hold by another user).
+    * `AVAILABLE` — no matching record, or `heldUntil` is expired/null.
+  * Implement seat hold in `src/services/seat.service.ts`:
+    * `holdSeat(showtimeId, seatId, bookingId)` — upserts `BookingSeat` setting `heldUntil = NOW + 5 minutes`.
+    * `releaseSeat(showtimeId, seatId)` — clears `heldUntil` on cancel or expiry.
+    * Expired holds (`heldUntil < NOW`) are treated as available at query time — no background cleanup job needed.
   * Merge `feature/seatmap-api` into `phase/phase6-seatmap` and delete feature branch.
 * [ ] Branch `feature/seatmap-ui` off `phase/phase6-seatmap`:
   * Create `SeatMap.tsx` component with row pricing badges and multi-seat selection state.
@@ -168,7 +176,8 @@ Create permanent milestone branch `phase/phase6-seatmap` off `develop`. Implemen
 * [ ] Merge `phase/phase6-seatmap` into `develop` and preserve `phase/phase6-seatmap` on GitHub.
 
 ### ✅ Verification Checkpoint
-* Open seat map in two browser tabs; select seats in Tab 1 and verify Tab 2 updates within 5 seconds via SWR polling.
+* Open seat map in two browser tabs; select seats in Tab 1 and verify Tab 2 shows them as `HELD` within 5 seconds via SWR polling.
+* Wait 5 minutes (or manually expire `heldUntil`) and confirm seats revert to `AVAILABLE` automatically.
 
 ---
 
@@ -208,9 +217,23 @@ Create permanent milestone branch `phase/phase8-admin-deployment` off `develop`.
 
 ### 📋 Checklist & Tasks
 * [ ] Create milestone branch `phase/phase8-admin-deployment` off `develop`.
-* [ ] Branch `feature/admin-crud` off `phase/phase8-admin-deployment`:
-  * Build Admin Dashboard (`/admin`), Movies CRUD (`/admin/movies`), and Showtimes scheduling (`/admin/showtimes`).
-  * Merge `feature/admin-crud` into `phase/phase8-admin-deployment` and delete feature branch.
+* [ ] Branch `feature/admin-movies-tmdb` off `phase/phase8-admin-deployment`:
+  * Create `src/lib/tmdb.ts` — thin `fetch` wrapper for TMDB REST API (no SDK needed):
+    * `searchMovies(query: string)` — calls `GET /search/movie`.
+    * `getMovieDetails(tmdbId: number)` — calls `GET /movie/{id}` with `append_to_response=credits`.
+  * Build `POST /api/admin/movies/sync` Route Handler:
+    * Accepts `{ tmdbId: number }` in the request body.
+    * Fetches full movie details from TMDB, maps genre names to local `Genre` records.
+    * Upserts `Movie` using `prisma.movie.upsert({ where: { tmdbId }, ... })` — safe to re-import.
+  * Build Admin Movies Page (`/admin/movies`):
+    * TMDB search input → live results list → **Import** button per result.
+    * Imported movies table with edit (title, description override) and deactivate actions.
+  * Add `TMDB_ACCESS_TOKEN=` to `.env.example`.
+  * Merge `feature/admin-movies-tmdb` into `phase/phase8-admin-deployment` and delete feature branch.
+* [ ] Branch `feature/admin-showtimes` off `phase/phase8-admin-deployment`:
+  * Build Admin Dashboard (`/admin`): operational overview metrics (total movies, showtimes, revenue).
+  * Build Showtimes Management Page (`/admin/showtimes`): form-based CRUD — select movie, select screen, pick date/time range, validate no overlap on same screen, submit.
+  * Merge `feature/admin-showtimes` into `phase/phase8-admin-deployment` and delete feature branch.
 * [ ] Branch `feature/ticket-scanner` off `phase/phase8-admin-deployment`:
   * Build Admin Ticket Scanner Page (`/admin/scanner`):
     * Install `html5-qrcode` (Browser WebCam QR scanner).

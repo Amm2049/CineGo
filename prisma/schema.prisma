@@ -38,6 +38,7 @@ enum TicketStatus {
 model User {
   id           String         @id @default(uuid())
   email        String         @unique
+  name         String?
   passwordHash String
   role         Role           @default(CUSTOMER)
   createdAt    DateTime       @default(now())
@@ -100,25 +101,25 @@ model Screen {
 }
 
 model Seat {
-  id        String        @id @default(uuid())
-  screenId  String
-  rowLabel  String
-  seatNum   Int
-  price     Decimal
-  screen    Screen        @relation(fields: [screenId], references: [id])
-  bookings  BookingSeat[]
+  id       String        @id @default(uuid())
+  screenId String
+  rowLabel String
+  seatNum  Int
+  price    Decimal
+  screen   Screen        @relation(fields: [screenId], references: [id])
+  bookings BookingSeat[]
 }
 
 model Showtime {
-  id        String        @id @default(uuid())
-  movieId   String
-  screenId  String
-  startsAt  DateTime
-  endsAt    DateTime
-  movie     Movie         @relation(fields: [movieId], references: [id])
-  screen    Screen        @relation(fields: [screenId], references: [id])
-  bookings  Booking[]
-  seats     BookingSeat[]
+  id       String        @id @default(uuid())
+  movieId  String
+  screenId String
+  startsAt DateTime
+  endsAt   DateTime
+  movie    Movie         @relation(fields: [movieId], references: [id])
+  screen   Screen        @relation(fields: [screenId], references: [id])
+  bookings Booking[]
+  seats    BookingSeat[]
 
   @@index([movieId, startsAt])
 }
@@ -140,15 +141,15 @@ model Booking {
 }
 
 model BookingSeat {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   bookingId       String
   showtimeId      String
   seatId          String
   priceAtPurchase Decimal
   heldUntil       DateTime?
-  booking         Booking  @relation(fields: [bookingId], references: [id])
-  showtime        Showtime @relation(fields: [showtimeId], references: [id])
-  seat            Seat     @relation(fields: [seatId], references: [id])
+  booking         Booking   @relation(fields: [bookingId], references: [id])
+  showtime        Showtime  @relation(fields: [showtimeId], references: [id])
+  seat            Seat      @relation(fields: [seatId], references: [id])
 
   @@unique([showtimeId, seatId])
 }
