@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { SessionProvider } from "@/components/providers/SessionProvider";
+import Navbar from "@/components/layout/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,7 +47,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <div className="absolute bottom-5 left-10 w-[700px] h-[700px] bg-[#2500f0]/18 rounded-full blur-[160px] opacity-70" />
         </div>
 
-        {children}
+        <SessionProvider>
+          <Navbar />
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );

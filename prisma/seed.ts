@@ -4,6 +4,7 @@
 
 import { prisma } from '../src/lib/prisma';
 import { Prisma } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 async function main() {
   console.log('🌱 Seeding CineGo database...\n');
@@ -193,6 +194,19 @@ async function main() {
     }
     console.log(`🎥 Created movie: ${movie.title} [${genreList.join(', ')}]`);
   }
+
+  // ── 6. Admin User ───────────────────────────────────────────
+  const adminPasswordHash = await bcrypt.hash('admin123', 12);
+  await prisma.user.upsert({
+    where: { email: 'admin@cinego.com' },
+    update: {},
+    create: {
+      email: 'admin@cinego.com',
+      passwordHash: adminPasswordHash,
+      role: 'ADMIN',
+    },
+  });
+  console.log('👤 Admin user created: admin@cinego.com / admin123');
 
   console.log('\n✅ Seeding complete!');
   console.log('   Run `npx prisma studio` to inspect the data.\n');
