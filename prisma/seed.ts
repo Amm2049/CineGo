@@ -195,6 +195,96 @@ async function main() {
     console.log(`🎥 Created movie: ${movie.title} [${genreList.join(', ')}]`);
   }
 
+  // ── 5.1 Conflict-Free Cinema Scheduling for Released Movies ──
+  console.log('\n🎟️  Scheduling conflict-free active showtimes for released movies...');
+  const releasedTitles = [
+    'Deadpool & Wolverine',
+    'Gladiator II',
+    'Wicked',
+    'The Wild Robot',
+    'Captain America: Brave New World',
+  ];
+
+  const releasedMovies = await prisma.movie.findMany({
+    where: { title: { in: releasedTitles } },
+  });
+
+  // Turnaround & cleaning buffer between screenings (minutes)
+  const CLEANING_BUFFER_MINUTES = 25;
+
+  let totalShowtimes = 0;
+
+  // Schedule across 3 days (today, tomorrow, day after tomorrow)
+  for (let dayOffset = 0; dayOffset <= 2; dayOffset++) {
+    for (let screenIndex = 0; screenIndex < screens.length; screenIndex++) {
+      const screen = screens[screenIndex];
+
+      // Screen opens at 11:00 AM each day
+      const currentTime = new Date();
+      currentTime.setDate(currentTime.getDate() + dayOffset);
+      currentTime.setHours(11, 0, 0, 0);
+
+      // Closing limit: last show must start before 22:30
+      const closingTime = new Date(currentTime);
+      closingTime.setHours(22, 30, 0, 0);
+
+      // Stagger starting movie across screens and days to ensure balanced programming
+      let movieIndex = (screenIndex + dayOffset) % releasedMovies.length;
+
+      while (currentTime < closingTime) {
+        const movie = releasedMovies[movieIndex];
+        const startsAt = new Date(currentTime);
+        const endsAt = new Date(startsAt.getTime() + movie.duration * 60 * 1000);
+
+        await prisma.showtime.create({
+          data: {
+            movieId: movie.id,
+            screenId: screen.id,
+            startsAt,
+            endsAt,
+          },
+        });
+        totalShowtimes++;
+
+        // Next screening starts after movie duration + cleaning buffer
+        currentTime.setTime(endsAt.getTime() + CLEANING_BUFFER_MINUTES * 60 * 1000);
+
+        // Round up to nearest 5 minutes for clean cinema schedule intervals (e.g. 13:43 -> 13:45)
+        const remainderMinutes = currentTime.getMinutes() % 5;
+        if (remainderMinutes !== 0) {
+          currentTime.setMinutes(currentTime.getMinutes() + (5 - remainderMinutes));
+        }
+
+        // Cycle to next movie for this screen
+        movieIndex = (movieIndex + 1) % releasedMovies.length;
+      }
+    }
+  }
+  console.log(`✅ Created ${totalShowtimes} conflict-free showtimes across ${screens.length} screens.`);
+
+  // Automated Conflict Verification Assertion
+  const allShowtimes = await prisma.showtime.findMany({
+    orderBy: [{ screenId: 'asc' }, { startsAt: 'asc' }],
+  });
+
+  let conflictCount = 0;
+  for (let i = 0; i < allShowtimes.length - 1; i++) {
+    const current = allShowtimes[i];
+    const next = allShowtimes[i + 1];
+    if (current.screenId === next.screenId && current.endsAt > next.startsAt) {
+      console.error(
+        `❌ Overlap detected on screen ${current.screenId}: [${current.startsAt.toLocaleTimeString()} - ${current.endsAt.toLocaleTimeString()}] overlaps with [${next.startsAt.toLocaleTimeString()} - ${next.endsAt.toLocaleTimeString()}]`
+      );
+      conflictCount++;
+    }
+  }
+
+  if (conflictCount === 0) {
+    console.log('🛡️  Verified: 0 showtime conflicts detected across all screens!\n');
+  } else {
+    throw new Error(`Scheduling conflict check failed: ${conflictCount} overlapping showtimes found.`);
+  }
+
   // ── 6. Admin User ───────────────────────────────────────────
   const adminPasswordHash = await bcrypt.hash('admin123', 12);
   await prisma.user.upsert({
