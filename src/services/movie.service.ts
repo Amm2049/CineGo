@@ -61,13 +61,17 @@ export async function getUpcomingMovies(params?: MovieQueryParams) {
 /**
  * Format raw Prisma movie data into a lightweight MovieItem for catalog and client views.
  */
+type CatalogRawMovie =
+  | Awaited<ReturnType<typeof getNowShowingMovies>>[number]
+  | Awaited<ReturnType<typeof getUpcomingMovies>>[number];
+
 export function formatCatalogMovie(
-  movie: Awaited<ReturnType<typeof getNowShowingMovies>>[number],
+  movie: CatalogRawMovie,
   isUpcoming: boolean
 ): MovieItem {
   const screens =
     "showtimes" in movie && Array.isArray(movie.showtimes)
-      ? movie.showtimes
+      ? (movie.showtimes as Array<{ screen?: { name?: string } | null }>)
           .map((s) => s.screen?.name)
           .filter((name): name is string => Boolean(name))
       : [];
@@ -98,7 +102,7 @@ export async function getFormattedCatalogMovies() {
   ]);
 
   const nowShowing = nowShowingRaw.map((m) => formatCatalogMovie(m, false));
-  const upcoming = upcomingRaw.map((m) => formatCatalogMovie(m as any, true));
+  const upcoming = upcomingRaw.map((m) => formatCatalogMovie(m, true));
 
   return { nowShowing, upcoming };
 }
