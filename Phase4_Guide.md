@@ -17,13 +17,15 @@ phase/phase4-movies
 ### Key Deliverables:
 - `prisma/seed.ts` (updated) — Seed active/future showtimes so the "Now Showing" derived query returns real showtime schedules
 - `src/types/index.ts` — TypeScript types (`MovieWithRelations`, `MovieCardProps`, `GenreWithSelection`)
+- `src/services/movie.service.ts` — Reusable data access service layer querying "Now Showing" and "Upcoming Releases"
+- `src/services/user.service.ts` — Reusable user profile and genre preferences service layer (`getUserProfile`, `getGenresWithUserSelection`, `updateUserInterests`, `getUserFavoriteGenres`)
 - `src/components/movies/MovieCard.tsx` — Modular, clickable movie card with poster, formats, runtime, and in-line AI match badge slot
 - `src/components/movies/HeroSpotlight.tsx` — Interactive Client Component for hero carousel controls & backdrop transitions
-- `src/app/page.tsx` — Server Component Homepage fetching "Now Showing" and "Upcoming Releases" live from PostgreSQL
+- `src/app/page.tsx` — Server Component Homepage fetching "Now Showing" and "Upcoming Releases" live from PostgreSQL via `movie.service.ts`
 - `src/app/(customer)/movies/page.tsx` — Movies Catalog page with a clean 2-tab layout: `[ 🍿 Now Showing ]` vs `[ 📅 Upcoming Releases ]`
-- `src/app/experiences/page.tsx` — Experiences FYI showcase covering all 4 screen formats: IMAX Laser, Dolby Cinema, 4DX Motion, and VIP Lounge (integrated with the global Navbar)
-- `src/app/api/user/interests/route.ts` — API endpoints (`GET` and `POST`) to retrieve and update customer favorite genre preferences
-- `src/app/(customer)/profile/page.tsx` — Account settings page with member details & interactive multi-select genre tag selector
+- `src/app/experiences/page.tsx` & `ExperiencesClient.tsx` — Experiences FYI showcase covering 4 flagship formats + 4 global benchmarks with interactive category tabs and search
+- `src/app/api/user/interests/route.ts` — Lightweight API endpoints (`GET` and `POST`) calling `user.service.ts`
+- `src/app/(customer)/profile/page.tsx` & `ProfileClient.tsx` — Account settings page with member details & interactive multi-select genre tag selector consuming `user.service.ts`
 
 ---
 
@@ -906,81 +908,22 @@ git checkout -b feature/experiences-profile
 
 ---
 
-## Step 10: Complete Experiences Showcase (`src/app/experiences/page.tsx`)
+## Step 10: Complete Experiences Showcase (`src/app/experiences/page.tsx` & `ExperiencesClient.tsx`)
 
-Update `src/app/experiences/page.tsx` so that:
-1. It showcases all **4 cinema screen formats** defined in the scope: **IMAX® with Laser**, **Dolby Cinema & Atmos®**, **4DX Motion & Effects**, and **The Director's Lounge (VIP)**.
-2. It removes the duplicate inner header (since the global `Navbar` is already rendered in `src/app/layout.tsx`).
+Update the experiences showcase to feature **4 CineGo Flagship formats** (IMAX® with Laser, Dolby Cinema & Atmos®, 4DX Motion & Effects, The Director's Lounge VIP) plus **4 Global Cinema Benchmarks** (ScreenX®, Samsung Onyx® Cinema LED, THX® Ultimate Cinema, D-BOX® Haptic Motion), complete with interactive category filtering, live tech search, and zero duplicate header bar:
+
+### 10.1 Server Component Container (`src/app/experiences/page.tsx`)
 
 ```tsx
 // src/app/experiences/page.tsx
-// CineGo Experiences FYI Showcase -- 4 Auditorium Formats
+// CineGo Experiences FYI Showcase -- Flagship Formats & Global Cinema Technology Standards
 
-import Link from "next/link";
+import ExperiencesClient from "./ExperiencesClient";
 
 export const metadata = {
   title: "Auditorium Experiences",
   description: "Explore CineGo cutting-edge cinema screen formats and audio technologies.",
 };
-
-const AUDITORIUM_SPECS = [
-  {
-    id: "imax",
-    name: "IMAX® with Laser",
-    badge: "Maximum Immersion",
-    spec: "Dual 4K Laser Projection · 1.43:1 Expanded Aspect Ratio",
-    desc: "Experience up to 40% more picture with unparalleled laser sharpness and a custom 12-channel soundstage tuned for visceral physical resonance.",
-    features: [
-      "Next-Gen 4K Laser Optical Engine",
-      "Sub-bass Transducers in Every Seat",
-      "Floor-to-Ceiling Curved Canvas",
-      "Laser-Aligned Digital Audio",
-    ],
-    highlight: "Best for Sci-Fi blockbusters and cinematic epics",
-  },
-  {
-    id: "dolby",
-    name: "Dolby Cinema & Atmos®",
-    badge: "Acoustic Perfection",
-    spec: "64-Channel Spatial Audio · Dolby Vision HDR",
-    desc: "Individual sound elements flow dynamically above and around you with true obsidian blacks and a 1,000,000:1 dynamic contrast ratio.",
-    features: [
-      "Object-Based Spatial Sound Elements",
-      "Dual 4K Christie Laser Projectors",
-      "Zero-Spill Matte Black Interior",
-      "Dolby Vision High Dynamic Range",
-    ],
-    highlight: "Best for acoustic mastery and dramatic contrast",
-  },
-  {
-    id: "4dx",
-    name: "4DX Motion & Effects",
-    badge: "Sensory Immersion",
-    spec: "Synchronized Motion Seats · Atmospheric FX",
-    desc: "Step beyond the screen with active motion seats synchronized with on-screen action, wind turbulence, water mist, scents, and strobe flashes.",
-    features: [
-      "3-DOF Hydraulic Motion Simulators",
-      "In-Theater Wind & Rain Simulators",
-      "Dynamic Environmental Scent Delivery",
-      "Lightning & Fog Simulation Systems",
-    ],
-    highlight: "Best for high-octane action and thrillers",
-  },
-  {
-    id: "vip",
-    name: "The Director's Lounge",
-    badge: "VIP Hospitality",
-    spec: "Motorized Zero-Gravity Recliners · In-Seat Dining",
-    desc: "Curated for uncompromising luxury. Enjoy in-theatre artisanal dining and handcrafted refreshments delivered silently to your personal private pod.",
-    features: [
-      "Heated Italian Leather Recliners",
-      "Acoustic Privacy Isolation Pods",
-      "Call-Button At-Seat Waiter Service",
-      "Artisanal Dining & Champagne Menu",
-    ],
-    highlight: "Best for romantic dates and luxury relaxation",
-  },
-];
 
 export default function ExperiencesPage() {
   return (
@@ -1000,78 +943,432 @@ export default function ExperiencesPage() {
         </p>
       </section>
 
-      {/* Experience Showcase Cards */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 w-full grid grid-cols-1 md:grid-cols-2 gap-8">
-        {AUDITORIUM_SPECS.map((spec) => (
-          <div
-            key={spec.id}
-            className="glass-panel-cobalt rounded-3xl p-7 flex flex-col justify-between space-y-6 relative overflow-hidden group hover:border-[#5938ff] transition-all duration-300"
-          >
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] uppercase font-black tracking-widest text-[#a5b4fc] bg-[#2500f0]/30 border border-[#2500f0]/50 px-3 py-1 rounded-full">
-                  {spec.badge}
-                </span>
-              </div>
-
-              <h2 className="text-2xl font-black text-white tracking-tight">{spec.name}</h2>
-              <div className="text-xs font-mono font-bold text-[#c7d2fe] bg-black/40 p-3 rounded-xl border border-white/10">
-                {spec.spec}
-              </div>
-
-              <p className="text-xs text-[#e2e8f0] leading-relaxed">
-                {spec.desc}
-              </p>
-
-              <div className="space-y-2 pt-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-white/70">
-                  Key Specifications
-                </div>
-                <ul className="space-y-1.5">
-                  {spec.features.map((feat) => (
-                    <li key={feat} className="text-xs text-[#c7d2fe] flex items-center gap-2">
-                      <span className="text-[#5938ff] font-bold">✓</span>
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-white/10 space-y-3">
-              <div className="text-[11px] font-semibold text-white/80 italic">
-                🎯 {spec.highlight}
-              </div>
-              <Link
-                href="/movies"
-                className="btn-cobalt w-full text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-2"
-              >
-                <span>Find {spec.name} Showtimes</span>
-                <span>→</span>
-              </Link>
-            </div>
-          </div>
-        ))}
+      {/* Experience Showcase Cards & Interactive Filter */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 w-full">
+        <ExperiencesClient />
       </section>
     </main>
   );
 }
 ```
 
+### 10.2 Interactive Client Filter & Standards Grid (`src/app/experiences/ExperiencesClient.tsx`)
+
+```tsx
+// src/app/experiences/ExperiencesClient.tsx
+"use client";
+
+import { useState } from "react";
+
+export interface AuditoriumSpec {
+  id: string;
+  name: string;
+  category: "flagship" | "vip" | "global";
+  badge: string;
+  spec: string;
+  desc: string;
+  features: string[];
+  highlight: string;
+  availability: string;
+}
+
+export const AUDITORIUM_SPECS: AuditoriumSpec[] = [
+  {
+    id: "imax",
+    name: "IMAX® with Laser",
+    category: "flagship",
+    badge: "Maximum Immersion",
+    spec: "Dual 4K Laser Projection · 1.43:1 Expanded Aspect Ratio",
+    desc: "Experience up to 40% more picture with unparalleled laser sharpness and a custom 12-channel soundstage tuned for visceral physical resonance.",
+    features: [
+      "Next-Gen 4K Laser Optical Engine",
+      "Sub-bass Transducers in Every Seat",
+      "Floor-to-Ceiling Curved Canvas",
+      "Laser-Aligned Digital Audio",
+    ],
+    highlight: "Best for Sci-Fi blockbusters and cinematic epics",
+    availability: "Flagship Hall 1",
+  },
+  {
+    id: "dolby",
+    name: "Dolby Cinema & Atmos®",
+    category: "flagship",
+    badge: "Acoustic & Visual Mastery",
+    spec: "64-Channel Spatial Audio · Dolby Vision Dual 4K HDR",
+    desc: "Individual sound elements flow dynamically above and around you with true obsidian blacks and a 1,000,000:1 dynamic contrast ratio.",
+    features: [
+      "Object-Based Spatial Sound Elements",
+      "Dual 4K Christie Laser Projectors",
+      "Zero-Spill Matte Black Interior",
+      "Dolby Vision High Dynamic Range",
+    ],
+    highlight: "Best for acoustic mastery and dramatic contrast",
+    availability: "Flagship Hall 2",
+  },
+  {
+    id: "4dx",
+    name: "4DX Motion & Effects",
+    category: "flagship",
+    badge: "Sensory Immersion",
+    spec: "Synchronized Motion Seats · Atmospheric FX",
+    desc: "Step beyond the screen with active motion seats synchronized with on-screen action, wind turbulence, water mist, scents, and strobe flashes.",
+    features: [
+      "3-DOF Hydraulic Motion Simulators",
+      "In-Theater Wind & Rain Simulators",
+      "Dynamic Environmental Scent Delivery",
+      "Lightning & Fog Simulation Systems",
+    ],
+    highlight: "Best for high-octane action and thrillers",
+    availability: "Flagship Hall 3",
+  },
+  {
+    id: "vip",
+    name: "The Director's Lounge",
+    category: "vip",
+    badge: "VIP Hospitality",
+    spec: "Motorized Zero-Gravity Recliners · In-Seat Dining",
+    desc: "Curated for uncompromising luxury. Enjoy in-theatre artisanal dining and handcrafted refreshments delivered silently to your personal private pod.",
+    features: [
+      "Heated Italian Leather Recliners",
+      "Acoustic Privacy Isolation Pods",
+      "Call-Button At-Seat Waiter Service",
+      "Artisanal Dining & Champagne Menu",
+    ],
+    highlight: "Best for romantic dates and luxury relaxation",
+    availability: "Private Suites & Lounge",
+  },
+  {
+    id: "screenx",
+    name: "ScreenX® 270° Panoramic",
+    category: "global",
+    badge: "270° Panoramic Canvas",
+    spec: "Multi-Projection Array · 270° Triple-Wall Immersion",
+    desc: "Expands cinematic storytelling beyond the traditional frame by utilizing the left and right auditorium walls, surrounding your peripheral vision with visual action.",
+    features: [
+      "Multi-Array Laser Projector Blending",
+      "Proprietary Panoramic Color Alignment",
+      "Active Side-Wall Scene Extension",
+      "Synchronized Spatial Surround Tuning",
+    ],
+    highlight: "Best for aerial sequences, speed chases, and wide spectacles",
+    availability: "Global Benchmark",
+  },
+  {
+    id: "onyx",
+    name: "Samsung Onyx® Cinema LED",
+    category: "global",
+    badge: "Direct-View Quantum LED",
+    spec: "4K DCI-Compliant Active LED · True Infinite Contrast",
+    desc: "Eliminates traditional projection entirely with self-illuminating cinema LED modules. Delivers true 0-nit obsidian blacks, 300 nits peak HDR brightness, and distortion-free geometry.",
+    features: [
+      "100% DCI-P3 Color Accuracy",
+      "Infinite Contrast Ratio (0.0005 to 300+ nits)",
+      "Meyer Sound / JBL Sculpted Audio Array",
+      "Active 3D Without Dimming or Crosstalk",
+    ],
+    highlight: "Best for ultra-sharp HDR visual masterpieces",
+    availability: "Global Benchmark",
+  },
+  {
+    id: "thx",
+    name: "THX® Ultimate Cinema",
+    category: "global",
+    badge: "Studio Audio Reference",
+    spec: "NC-30 Acoustic Isolation · Dual 4K Laser Projection",
+    desc: "The legendary acoustic standard founded by George Lucas. Every architectural baffle, acoustic dampening panel, and speaker crossover is calibrated to match Hollywood studio dubbing stages.",
+    features: [
+      "NC-30 Architectural Noise Criterion",
+      "Precision RT60 Reverberation Tuning",
+      "Floating Wall Acoustic Isolation",
+      "Baffle-Mounted Sub-Bass Line Arrays",
+    ],
+    highlight: "Best for audiophiles and master orchestral scores",
+    availability: "Global Benchmark",
+  },
+  {
+    id: "dbox",
+    name: "D-BOX® Haptic Motion",
+    category: "global",
+    badge: "Micro-Telemetry Haptics",
+    spec: "Sub-Millimeter Actuators · Studio-Coded Telemetry",
+    desc: "Hollywood studio directors program frame-by-frame motion code into the film, transmitting true physical G-forces, subtle engine vibrations, and spatial pitch directly through the seat.",
+    features: [
+      "Sub-Millimeter Precision Actuators",
+      "Studio Direct Telemetry Encoding",
+      "Pitch, Roll & Heave Motion Dynamics",
+      "Individual Intensity Controller",
+    ],
+    highlight: "Best for racing films, flight sims, and visceral action",
+    availability: "Global Benchmark",
+  },
+];
+
+export default function ExperiencesClient() {
+  const [activeTab, setActiveTab] = useState<"all" | "flagship" | "global">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSpecs = AUDITORIUM_SPECS.filter((spec) => {
+    const matchesTab =
+      activeTab === "all"
+        ? true
+        : activeTab === "flagship"
+        ? spec.category === "flagship" || spec.category === "vip"
+        : spec.category === "global";
+
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      !q ||
+      spec.name.toLowerCase().includes(q) ||
+      spec.spec.toLowerCase().includes(q) ||
+      spec.badge.toLowerCase().includes(q) ||
+      spec.features.some((f) => f.toLowerCase().includes(q));
+
+    return matchesTab && matchesSearch;
+  });
+
+  return (
+    <div className="space-y-10">
+      {/* Category Tabs & Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 border-b border-[#2500f0]/20">
+        <div className="inline-flex p-1.5 rounded-2xl bg-[#070820] border border-[#2500f0]/40">
+          <button
+            type="button"
+            onClick={() => setActiveTab("all")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === "all"
+                ? "bg-[#2500f0] text-white shadow-[0_0_15px_rgba(37,0,240,0.6)]"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <span>All Standards</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/40 text-white/90">
+              {AUDITORIUM_SPECS.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("flagship")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === "flagship"
+                ? "bg-[#2500f0] text-white shadow-[0_0_15px_rgba(37,0,240,0.6)]"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <span>🍿 CineGo Flagship</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/40 text-white/90">
+              4
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("global")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === "global"
+                ? "bg-[#2500f0] text-white shadow-[0_0_15px_rgba(37,0,240,0.6)]"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <span>🌐 Global Showcase</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/40 text-white/90">
+              4
+            </span>
+          </button>
+        </div>
+
+        <div className="w-full sm:w-72">
+          <input
+            type="text"
+            placeholder="Search technology, audio, or display..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full text-xs bg-[#070820] border border-white/15 focus:border-[#5938ff] rounded-xl px-3.5 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#5938ff]"
+          />
+        </div>
+      </div>
+
+      {/* Experience Showcase Cards */}
+      {filteredSpecs.length === 0 ? (
+        <div className="glass-panel rounded-2xl p-12 text-center space-y-2">
+          <p className="text-zinc-300 font-semibold text-sm">No cinema standards found.</p>
+          <p className="text-zinc-500 text-xs">Try adjusting your search query.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredSpecs.map((spec) => (
+            <div
+              key={spec.id}
+              className="glass-panel-cobalt rounded-3xl p-6 sm:p-7 flex flex-col justify-between space-y-6 relative overflow-hidden group hover:border-[#5938ff] transition-all duration-300 shadow-xl"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-[10px] sm:text-[11px] uppercase font-black tracking-widest text-[#a5b4fc] bg-[#2500f0]/30 border border-[#2500f0]/50 px-3 py-1 rounded-full">
+                    {spec.badge}
+                  </span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-white/[0.06] text-zinc-300 border border-white/10">
+                    {spec.availability}
+                  </span>
+                </div>
+
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">{spec.name}</h2>
+                  <div className="mt-2 text-[11px] sm:text-xs font-mono font-bold text-[#c7d2fe] bg-black/40 p-2.5 rounded-xl border border-white/10">
+                    {spec.spec}
+                  </div>
+                </div>
+
+                <p className="text-xs text-[#e2e8f0] leading-relaxed">{spec.desc}</p>
+
+                <div className="space-y-2 pt-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-white/70">
+                    Key Specifications
+                  </div>
+                  <ul className="space-y-1.5">
+                    {spec.features.map((feat) => (
+                      <li key={feat} className="text-xs text-[#c7d2fe] flex items-center gap-2">
+                        <span className="text-[#5938ff] font-bold">✓</span>
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-[#c7d2fe]/90 italic">
+                  🎯 {spec.highlight}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
 ---
 
-## Step 11: User Interests API Endpoint (`src/app/api/user/interests/route.ts`)
+## Step 11: Reusable User Service & Interests API Endpoint
 
-Create `src/app/api/user/interests/route.ts` supporting both `GET` and `POST` methods:
-- **`GET`**: Returns the list of all genres and flags which ones are currently selected by the authenticated user.
-- **`POST`**: Receives an array of `genreIds: string[]`, verifies authentication via NextAuth session, and updates `UserInterest` records in an atomic `$transaction`.
+### Architectural Principle: Service Layer Pattern
+Following **Clean Architecture** and matching `src/services/movie.service.ts`:
+- We do **not** write raw database queries directly inside Server Components or Route Handlers.
+- All user profile, genre mapping, and transaction logic is placed in `src/services/user.service.ts`.
+- This makes database operations reusable across Server Components (`/profile`), API Route Handlers (`/api/user/interests`), and **Phase 5 AI Recommendation Services** (`recommendation.service.ts`), while keeping routes and views focused on transport and presentation.
+
+### 11.1 Create Reusable User Data Access Service (`src/services/user.service.ts`)
+
+Create `src/services/user.service.ts`:
+
+```typescript
+// src/services/user.service.ts
+// CineGo -- Reusable User & Genre Preferences Service Layer
+
+import prisma from "@/lib/prisma";
+
+export interface GenreSelectionItem {
+  id: string;
+  name: string;
+  selected: boolean;
+}
+
+/**
+ * Fetch member profile details along with currently selected genre IDs.
+ */
+export async function getUserProfile(userId: string) {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      createdAt: true,
+      interests: {
+        select: { genreId: true },
+      },
+    },
+  });
+}
+
+/**
+ * Fetch all available genres sorted alphabetically with a boolean flag indicating if the user has selected it.
+ */
+export async function getGenresWithUserSelection(userId?: string): Promise<GenreSelectionItem[]> {
+  const [allGenres, userInterests] = await Promise.all([
+    prisma.genre.findMany({ orderBy: { name: "asc" } }),
+    userId
+      ? prisma.userInterest.findMany({
+          where: { userId },
+          select: { genreId: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const selectedSet = new Set(userInterests.map((ui) => ui.genreId));
+
+  return allGenres.map((genre) => ({
+    id: genre.id,
+    name: genre.name,
+    selected: selectedSet.has(genre.id),
+  }));
+}
+
+/**
+ * Atomically update user genre selections inside a Prisma transaction.
+ */
+export async function updateUserInterests(userId: string, genreIds: string[]) {
+  return prisma.$transaction(async (tx) => {
+    // 1. Delete previous selections
+    await tx.userInterest.deleteMany({
+      where: { userId },
+    });
+
+    // 2. Insert new selections
+    if (genreIds.length > 0) {
+      await tx.userInterest.createMany({
+        data: genreIds.map((genreId: string) => ({
+          userId,
+          genreId,
+        })),
+      });
+    }
+
+    return { count: genreIds.length };
+  });
+}
+
+/**
+ * Fetch favorite genre names for a user (used by Phase 5 AI Gemini Recommendation Engine).
+ */
+export async function getUserFavoriteGenres(userId: string): Promise<string[]> {
+  const interests = await prisma.userInterest.findMany({
+    where: { userId },
+    include: { genre: true },
+  });
+
+  return interests.map((i) => i.genre.name);
+}
+```
+
+### 11.2 Lightweight Route Handler (`src/app/api/user/interests/route.ts`)
+
+Create `src/app/api/user/interests/route.ts` calling `user.service.ts`:
 
 ```typescript
 // src/app/api/user/interests/route.ts
+// Lightweight Next.js Route Handler delegating to user.service.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import {
+  getGenresWithUserSelection,
+  updateUserInterests,
+} from "@/services/user.service";
 
 // GET /api/user/interests
 export async function GET() {
@@ -1081,26 +1378,16 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = session.user.id;
-
-  // Fetch all genres and user's currently selected interests
-  const [allGenres, userInterests] = await Promise.all([
-    prisma.genre.findMany({ orderBy: { name: "asc" } }),
-    prisma.userInterest.findMany({
-      where: { userId },
-      select: { genreId: true },
-    }),
-  ]);
-
-  const selectedIds = new Set(userInterests.map((ui) => ui.genreId));
-
-  const items = allGenres.map((g) => ({
-    id: g.id,
-    name: g.name,
-    selected: selectedIds.has(g.id),
-  }));
-
-  return NextResponse.json({ genres: items });
+  try {
+    const items = await getGenresWithUserSelection(session.user.id);
+    return NextResponse.json({ genres: items });
+  } catch (error) {
+    console.error("Error fetching user genres:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch genre preferences" },
+      { status: 500 }
+    );
+  }
 }
 
 // POST /api/user/interests
@@ -1110,8 +1397,6 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const userId = session.user.id;
 
   try {
     const body = await req.json();
@@ -1124,25 +1409,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Atomic replacement of user interests
-    await prisma.$transaction(async (tx) => {
-      // 1. Delete current selections
-      await tx.userInterest.deleteMany({
-        where: { userId },
-      });
-
-      // 2. Insert new selections
-      if (genreIds.length > 0) {
-        await tx.userInterest.createMany({
-          data: genreIds.map((genreId: string) => ({
-            userId,
-            genreId,
-          })),
-        });
-      }
-    });
-
-    return NextResponse.json({ success: true, count: genreIds.length });
+    const result = await updateUserInterests(session.user.id, genreIds);
+    return NextResponse.json({ success: true, count: result.count });
   } catch (error) {
     console.error("Error updating user interests:", error);
     return NextResponse.json(
@@ -1161,12 +1429,12 @@ Create the customer profile view in `src/app/(customer)/profile/page.tsx`. This 
 
 ```tsx
 // src/app/(customer)/profile/page.tsx
-// Profile & Genre Preferences page
+// Profile & Genre Preferences page -- Clean Server Component querying user.service.ts
 
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { getUserProfile, getGenresWithUserSelection } from "@/services/user.service";
 import ProfileClient from "./ProfileClient";
 
 export const dynamic = "force-dynamic";
@@ -1183,24 +1451,17 @@ export default async function ProfilePage() {
     redirect("/login?callbackUrl=/profile");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      interests: {
-        select: { genreId: true },
-      },
-    },
-  });
+  const [user, genresWithSelection] = await Promise.all([
+    getUserProfile(session.user.id),
+    getGenresWithUserSelection(session.user.id),
+  ]);
 
   if (!user) {
     redirect("/login");
   }
 
-  const allGenres = await prisma.genre.findMany({
-    orderBy: { name: "asc" },
-  });
-
   const selectedGenreIds = user.interests.map((i) => i.genreId);
+  const allGenres = genresWithSelection.map((g) => ({ id: g.id, name: g.name }));
 
   return (
     <main className="flex-1 min-h-screen bg-[#03030d] text-white py-12">
@@ -1490,12 +1751,13 @@ git push origin phase/phase4-movies
 | Deliverable | Status |
 |:---|:---|
 | Seed active showtimes for released movies | Done |
+| Reusable data access layer (`movie.service.ts` & `user.service.ts`) | Done |
 | Reusable `MovieCard` with image optimization & AI badge slot | Done |
 | Interactive `HeroSpotlight` Client Component | Done |
-| Server Component Homepage (`/`) querying live PostgreSQL DB | Done |
+| Server Component Homepage (`/`) querying live PostgreSQL DB via service | Done |
 | Movies Catalog Page (`/movies`) with dynamic 2-tab layout | Done |
-| Experiences Showcase (`/experiences`) with all 4 auditorium formats | Done |
-| `GET/POST /api/user/interests` Route Handler | Done |
+| Experiences Showcase (`/experiences`) with interactive filters & specs | Done |
+| `GET/POST /api/user/interests` Route Handler delegating to `user.service.ts` | Done |
 | Profile Settings Page (`/profile`) with persistent genre selection | Done |
 | `feature/homepage-catalog` -> `phase/phase4-movies` | Merged & deleted |
 | `feature/experiences-profile` -> `phase/phase4-movies` | Merged & deleted |
