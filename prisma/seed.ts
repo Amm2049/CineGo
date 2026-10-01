@@ -1,15 +1,35 @@
-// prisma/seed.ts
-// CineGo — Database Seed Script (Phase 2)
-// Idempotent: safe to re-run (deletes existing data first)
+﻿// prisma/seed.ts
+// CineGo — Database Seed Script
+// Supports Live TMDB API Sync with resilient offline fallback
+// Generates a 14-day conflict-free rolling showtime schedule
 
 import { prisma } from '../src/lib/prisma';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import {
+  hasTmdbCredentials,
+  getNowPlayingMovies,
+  getUpcomingMovies,
+  getMovieDetails,
+  getTmdbImageUrl,
+  getTmdbGenres,
+} from '../src/lib/tmdb';
+
+interface SeedMovieItem {
+  tmdbId: number;
+  title: string;
+  description: string;
+  duration: number;
+  releaseDate: Date;
+  posterUrl: string;
+  backdropUrl: string;
+  genres: string[];
+}
 
 async function main() {
-  console.log('🌱 Seeding CineGo database...\n');
+  console.log('🎬 Seeding CineGo database...\n');
 
-  // ── Clean existing data (reverse FK order) ──────────────
+  // ── Clean existing data (reverse FK order) ──────────────────
   await prisma.bookingSeat.deleteMany();
   await prisma.ticket.deleteMany();
   await prisma.payment.deleteMany();
@@ -23,18 +43,18 @@ async function main() {
   await prisma.screen.deleteMany();
   await prisma.cinema.deleteMany();
   await prisma.user.deleteMany();
-  console.log('🗑️  Cleared existing data.\n');
+  console.log('🧹 Cleared existing database records.\n');
 
-  // ── 1. Cinema ───────────────────────────────────────────
+  // ── 1. Cinema ───────────────────────────────────────────────
   const cinema = await prisma.cinema.create({
     data: {
       name: 'CineGo Flagship',
       location: 'Siam Paragon, Bangkok',
     },
   });
-  console.log(`🎬 Created cinema: ${cinema.name}`);
+  console.log(`🏛️  Created cinema: ${cinema.name}`);
 
-  // ── 2. Screens ──────────────────────────────────────────
+  // ── 2. Screens ──────────────────────────────────────────────
   const screenNames = ['IMAX Laser', 'Dolby Cinema', '4DX Motion', 'Standard'];
   const screens = [];
   for (const name of screenNames) {
@@ -48,7 +68,7 @@ async function main() {
     console.log(`🖥️  Created screen: ${name}`);
   }
 
-  // ── 3. Seats (Rows A–F, 10 seats/row, row-based pricing) ──
+  // ── 3. Seats (Rows A–F, 10 seats/row, row-based pricing) ─────
   //    Premium       (A–B): ฿280
   //    Standard Plus (C–D): ฿200
   //    Standard      (E–F): ฿150
@@ -79,143 +99,231 @@ async function main() {
   }
   console.log(`💺 Created ${totalSeats} seats across ${screens.length} screens (Rows A–F, 10 seats/row)\n`);
 
-  // ── 4. Genres ───────────────────────────────────────────
-  const genreNames = [
+  // ── 4. Genres ───────────────────────────────────────────────
+  const standardGenres = [
     'Action',
-    'Comedy',
-    'Drama',
-    'Horror',
-    'Sci-Fi',
-    'Romance',
-    'Thriller',
+    'Adventure',
     'Animation',
-    'Fantasy',
+    'Comedy',
+    'Crime',
     'Documentary',
+    'Drama',
+    'Family',
+    'Fantasy',
+    'History',
+    'Horror',
+    'Music',
+    'Mystery',
+    'Romance',
+    'Sci-Fi',
+    'Science Fiction',
+    'Thriller',
+    'War',
+    'Western',
   ];
 
-  const genres: Record<string, string> = {};
-  for (const name of genreNames) {
-    const genre = await prisma.genre.create({ data: { name } });
-    genres[name] = genre.id;
+  const genreMap: Record<string, string> = {};
+
+  if (hasTmdbCredentials()) {
+    try {
+      console.log('🌐 Fetching official genre taxonomy from TMDB API...');
+      const tmdbGenres = await getTmdbGenres();
+      for (const g of tmdbGenres) {
+        if (!standardGenres.includes(g.name)) {
+          standardGenres.push(g.name);
+        }
+      }
+    } catch {
+      console.warn('⚠️  Could not fetch TMDB genres online, using standard genre list.');
+    }
   }
-  console.log(`🎭 Created ${genreNames.length} genres: ${genreNames.join(', ')}`);
 
-  // ── 5. Movies ───────────────────────────────────────────
+  for (const name of standardGenres) {
+    const genre = await prisma.genre.create({ data: { name } });
+    genreMap[name] = genre.id;
+  }
+  console.log(`🏷️  Created ${standardGenres.length} genres in taxonomy.`);
+
+  // ── 5. Movies (Live TMDB Sync or Curated Fallback) ───────────
   const now = new Date();
-  const movies = [
-    // Now Screening (real recent blockbusters currently in cinemas)
-    {
-      title: 'Deadpool & Wolverine',
-      description: 'A listless Wade Wilson toils away in civilian life with his days as Deadpool behind him. But when his homeworld faces an existential threat, Wade must reluctantly suit-up again with an even more reluctant Wolverine.',
-      duration: 128,
-      releaseDate: new Date(2024, 6, 26),
-      posterUrl: 'https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg',
-      backdropUrl: 'https://image.tmdb.org/t/p/original/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg',
-      genres: ['Action', 'Comedy', 'Sci-Fi'],
-    },
-    {
-      title: 'Gladiator II',
-      description: 'Years after witnessing the death of Maximus, Lucius is forced to enter the Colosseum after his home is conquered by tyrannical emperors who lead Rome with an iron fist, fighting to restore glory to the Empire.',
-      duration: 148,
-      releaseDate: new Date(2024, 10, 22),
-      posterUrl: 'https://image.tmdb.org/t/p/w500/2cxhvwyEwRlysAmRH4iodkvo0z5.jpg',
-      backdropUrl: 'https://image.tmdb.org/t/p/original/tOqIwliWMovSIZ9DyvHcHI7p2im.jpg',
-      genres: ['Action', 'Drama'],
-    },
-    {
-      title: 'Wicked',
-      description: 'In the land of Oz, misunderstood green-skinned Elphaba forms an unlikely friendship with popular Glinda at Shiz University, tested as they fulfill their respective destinies as Glinda the Good and the Wicked Witch of the West.',
-      duration: 161,
-      releaseDate: new Date(2024, 10, 22),
-      posterUrl: 'https://image.tmdb.org/t/p/w500/xDGbZ0JJ3mYaGKy4Nzd9Kph6M9L.jpg',
-      backdropUrl: 'https://image.tmdb.org/t/p/original/fyZ6SDUS4o9jp2EHxfZa3qS9ean.jpg',
-      genres: ['Fantasy', 'Drama', 'Romance'],
-    },
-    {
-      title: 'The Wild Robot',
-      description: 'After a shipwreck, an intelligent robot called Roz is stranded on an uninhabited island and bonds with the island animals, adopting an orphaned baby goose in a moving tale of survival and connection.',
-      duration: 102,
-      releaseDate: new Date(2024, 8, 27),
-      posterUrl: 'https://image.tmdb.org/t/p/w500/wTnV3PCVW5O92JMrFvvrRcV39RU.jpg',
-      backdropUrl: 'https://image.tmdb.org/t/p/original/1pmXyN3sKeYoUhu5VBZiDU4BX21.jpg',
-      genres: ['Animation', 'Sci-Fi', 'Drama'],
-    },
-    {
-      title: 'Captain America: Brave New World',
-      description: 'Sam Wilson finds himself in the middle of an international incident after meeting with newly elected U.S. President Thaddeus Ross, uncovering a nefarious global plot before the mastermind behind it can plunge the world into chaos.',
-      duration: 118,
-      releaseDate: new Date(2025, 1, 14),
-      posterUrl: 'https://image.tmdb.org/t/p/w500/pzIddUEMWhWzfvLI3TwxUG2wGoi.jpg',
-      backdropUrl: 'https://image.tmdb.org/t/p/original/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg',
-      genres: ['Action', 'Sci-Fi', 'Thriller'],
-    },
-    // Upcoming Releases (releaseDate in the future)
-    {
-      title: 'Superman',
-      description: 'Superman, a journalist in Metropolis, embarks on a journey to reconcile his Kryptonian heritage with his human upbringing as Clark Kent in James Gunn new DC Universe vision.',
-      duration: 135,
-      releaseDate: new Date(now.getFullYear() + 1, 6, 11),
-      posterUrl: 'https://image.tmdb.org/t/p/w500/ldyfo0BKmz5rWtJJKCvwaNS4cJT.jpg',
-      backdropUrl: 'https://image.tmdb.org/t/p/original/yRBc6WY3r1Fz5Cjd6DhSvzqunED.jpg',
-      genres: ['Action', 'Sci-Fi'],
-    },
-    {
-      title: 'The Fantastic Four: First Steps',
-      description: 'Set against the vibrant backdrop of a 1960s retro-futuristic world, Marvel First Family must balance their roles as superheroes and a tight-knit family while defending Earth against the cosmic entity Galactus.',
-      duration: 130,
-      releaseDate: new Date(now.getFullYear() + 1, 6, 25),
-      posterUrl: 'https://image.tmdb.org/t/p/w500/veiSodk4JS4M2kBZCqBWeEEdMCr.jpg',
-      backdropUrl: 'https://image.tmdb.org/t/p/original/pwCZP8QjiQRvz15MGxQckW0wl3a.jpg',
-      genres: ['Action', 'Sci-Fi', 'Fantasy'],
-    },
-    {
-      title: 'Avengers: Doomsday',
-      description: 'Beloved heroes from distinct universes are set on a deadly collision course and face an existential threat unlike anything they have ever encountered as Doctor Doom rises to reshape reality.',
-      duration: 165,
-      releaseDate: new Date(now.getFullYear() + 1, 10, 1),
-      posterUrl: 'https://image.tmdb.org/t/p/w500/jzPwsojjFStf5lR5Nm07w2hH56G.jpg',
-      backdropUrl: 'https://image.tmdb.org/t/p/original/s4v0UX1anfXm0UvloLsTTJ4v222.jpg',
-      genres: ['Action', 'Sci-Fi', 'Fantasy'],
-    },
-  ];
+  let moviesToSeed: SeedMovieItem[] = [];
 
-  for (const movieData of movies) {
+  if (hasTmdbCredentials()) {
+    try {
+      console.log('\n🌐 Live TMDB API credentials detected! Syncing live movies...');
+      const [nowPlayingRes, upcomingRes] = await Promise.all([
+        getNowPlayingMovies(1),
+        getUpcomingMovies(1),
+      ]);
+
+      const nowPlayingTop = nowPlayingRes.results.slice(0, 5);
+      const upcomingTop = upcomingRes.results.slice(0, 4);
+
+      console.log(`📥 Syncing ${nowPlayingTop.length} Now Playing & ${upcomingTop.length} Upcoming movies...`);
+
+      for (const item of nowPlayingTop) {
+        const details = await getMovieDetails(item.id);
+        moviesToSeed.push({
+          tmdbId: details.id,
+          title: details.title,
+          description: details.overview || details.tagline || 'Experience this blockbuster in theaters.',
+          duration: details.runtime && details.runtime > 0 ? details.runtime : 120,
+          releaseDate: new Date(details.release_date || now),
+          posterUrl: getTmdbImageUrl(details.poster_path, 'w500'),
+          backdropUrl: getTmdbImageUrl(details.backdrop_path, 'original'),
+          genres: details.genres.map((g) => (g.name === 'Science Fiction' ? 'Sci-Fi' : g.name)),
+        });
+      }
+
+      for (const item of upcomingTop) {
+        const details = await getMovieDetails(item.id);
+        // Ensure upcoming release date is dynamically in the future
+        let relDate = new Date(details.release_date);
+        if (relDate <= now) {
+          relDate = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000);
+        }
+        moviesToSeed.push({
+          tmdbId: details.id,
+          title: details.title,
+          description: details.overview || details.tagline || 'Coming soon exclusively to theaters.',
+          duration: details.runtime && details.runtime > 0 ? details.runtime : 125,
+          releaseDate: relDate,
+          posterUrl: getTmdbImageUrl(details.poster_path, 'w500'),
+          backdropUrl: getTmdbImageUrl(details.backdrop_path, 'original'),
+          genres: details.genres.map((g) => (g.name === 'Science Fiction' ? 'Sci-Fi' : g.name)),
+        });
+      }
+      console.log('✅ Successfully fetched live movies from TMDB API.');
+    } catch (apiError) {
+      console.warn('⚠️  TMDB API sync failed, switching to curated offline dataset:', apiError);
+      moviesToSeed = [];
+    }
+  }
+
+  // Fallback dataset if no API credentials or API call failed
+  if (moviesToSeed.length === 0) {
+    console.log('📦 Using curated blockbuster catalog with dynamic rolling release dates.');
+    moviesToSeed = [
+      // Now Showing (released with past release dates)
+      {
+        tmdbId: 533535,
+        title: 'Deadpool & Wolverine',
+        description: 'A listless Wade Wilson toils away in civilian life with his days as Deadpool behind him. But when his homeworld faces an existential threat, Wade must reluctantly suit-up again with an even more reluctant Wolverine.',
+        duration: 128,
+        releaseDate: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000), // 60 days ago
+        posterUrl: 'https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg',
+        backdropUrl: 'https://image.tmdb.org/t/p/original/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg',
+        genres: ['Action', 'Comedy', 'Sci-Fi'],
+      },
+      {
+        tmdbId: 558449,
+        title: 'Gladiator II',
+        description: 'Years after witnessing the death of Maximus, Lucius is forced to enter the Colosseum after his home is conquered by tyrannical emperors who lead Rome with an iron fist, fighting to restore glory to the Empire.',
+        duration: 148,
+        releaseDate: new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000), // 40 days ago
+        posterUrl: 'https://image.tmdb.org/t/p/w500/2cxhvwyEwRlysAmRH4iodkvo0z5.jpg',
+        backdropUrl: 'https://image.tmdb.org/t/p/original/tOqIwliWMovSIZ9DyvHcHI7p2im.jpg',
+        genres: ['Action', 'Drama'],
+      },
+      {
+        tmdbId: 402431,
+        title: 'Wicked',
+        description: 'In the land of Oz, misunderstood green-skinned Elphaba forms an unlikely friendship with popular Glinda at Shiz University, tested as they fulfill their respective destinies as Glinda the Good and the Wicked Witch of the West.',
+        duration: 161,
+        releaseDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+        posterUrl: 'https://image.tmdb.org/t/p/w500/xDGbZ0JJ3mYaGKy4Nzd9Kph6M9L.jpg',
+        backdropUrl: 'https://image.tmdb.org/t/p/original/fyZ6SDUS4o9jp2EHxfZa3qS9ean.jpg',
+        genres: ['Fantasy', 'Drama', 'Romance'],
+      },
+      {
+        tmdbId: 1184918,
+        title: 'The Wild Robot',
+        description: 'After a shipwreck, an intelligent robot called Roz is stranded on an uninhabited island and bonds with the island animals, adopting an orphaned baby goose in a moving tale of survival and connection.',
+        duration: 102,
+        releaseDate: new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000), // 20 days ago
+        posterUrl: 'https://image.tmdb.org/t/p/w500/wTnV3PCVW5O92JMrFvvrRcV39RU.jpg',
+        backdropUrl: 'https://image.tmdb.org/t/p/original/1pmXyN3sKeYoUhu5VBZiDU4BX21.jpg',
+        genres: ['Animation', 'Sci-Fi', 'Drama'],
+      },
+      {
+        tmdbId: 823464,
+        title: 'Captain America: Brave New World',
+        description: 'Sam Wilson finds himself in the middle of an international incident after meeting with newly elected U.S. President Thaddeus Ross, uncovering a nefarious global plot before the mastermind behind it can plunge the world into chaos.',
+        duration: 118,
+        releaseDate: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
+        posterUrl: 'https://image.tmdb.org/t/p/w500/pzIddUEMWhWzfvLI3TwxUG2wGoi.jpg',
+        backdropUrl: 'https://image.tmdb.org/t/p/original/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg',
+        genres: ['Action', 'Sci-Fi', 'Thriller'],
+      },
+      // Upcoming Releases (Dynamically relative into the future -- never expire!)
+      {
+        tmdbId: 1063877,
+        title: 'Superman',
+        description: 'Superman, a journalist in Metropolis, embarks on a journey to reconcile his Kryptonian heritage with his human upbringing as Clark Kent in James Gunn new DC Universe vision.',
+        duration: 135,
+        releaseDate: new Date(now.getTime() + 18 * 24 * 60 * 60 * 1000), // +18 days into future
+        posterUrl: 'https://image.tmdb.org/t/p/w500/ldyfo0BKmz5rWtJJKCvwaNS4cJT.jpg',
+        backdropUrl: 'https://image.tmdb.org/t/p/original/yRBc6WY3r1Fz5Cjd6DhSvzqunED.jpg',
+        genres: ['Action', 'Sci-Fi'],
+      },
+      {
+        tmdbId: 617126,
+        title: 'The Fantastic Four: First Steps',
+        description: 'Set against the vibrant backdrop of a 1960s retro-futuristic world, Marvel First Family must balance their roles as superheroes and a tight-knit family while defending Earth against the cosmic entity Galactus.',
+        duration: 130,
+        releaseDate: new Date(now.getTime() + 35 * 24 * 60 * 60 * 1000), // +35 days into future
+        posterUrl: 'https://image.tmdb.org/t/p/w500/veiSodk4JS4M2kBZCqBWeEEdMCr.jpg',
+        backdropUrl: 'https://image.tmdb.org/t/p/original/pwCZP8QjiQRvz15MGxQckW0wl3a.jpg',
+        genres: ['Action', 'Sci-Fi', 'Fantasy'],
+      },
+      {
+        tmdbId: 1003596,
+        title: 'Avengers: Doomsday',
+        description: 'Beloved heroes from distinct universes are set on a deadly collision course and face an existential threat unlike anything they have ever encountered as Doctor Doom rises to reshape reality.',
+        duration: 165,
+        releaseDate: new Date(now.getTime() + 65 * 24 * 60 * 60 * 1000), // +65 days into future
+        posterUrl: 'https://image.tmdb.org/t/p/w500/jzPwsojjFStf5lR5Nm07w2hH56G.jpg',
+        backdropUrl: 'https://image.tmdb.org/t/p/original/s4v0UX1anfXm0UvloLsTTJ4v222.jpg',
+        genres: ['Action', 'Sci-Fi', 'Fantasy'],
+      },
+    ];
+  }
+
+  const createdMovies = [];
+  for (const movieData of moviesToSeed) {
     const { genres: genreList, ...data } = movieData;
     const movie = await prisma.movie.create({ data });
 
-    // Create MovieGenre associations
     for (const genreName of genreList) {
-      await prisma.movieGenre.create({
-        data: {
-          movieId: movie.id,
-          genreId: genres[genreName],
-        },
-      });
+      const genreId = genreMap[genreName] || genreMap['Action'];
+      if (genreId) {
+        await prisma.movieGenre.create({
+          data: {
+            movieId: movie.id,
+            genreId,
+          },
+        });
+      }
     }
-    console.log(`🎥 Created movie: ${movie.title} [${genreList.join(', ')}]`);
+    createdMovies.push(movie);
+    console.log(`🎬 Created movie: ${movie.title} (tmdbId: ${movie.tmdbId})`);
   }
 
-  // ── 5.1 Conflict-Free Cinema Scheduling for Released Movies ──
-  console.log('\n🎟️  Scheduling conflict-free active showtimes for released movies...');
-  const releasedTitles = [
-    'Deadpool & Wolverine',
-    'Gladiator II',
-    'Wicked',
-    'The Wild Robot',
-    'Captain America: Brave New World',
-  ];
+  // ── 5.1 Dynamic Conflict-Free Cinema Scheduling (14-Day Window) ──
+  console.log('\n🎟️  Scheduling conflict-free active showtimes across 14-day rolling window...');
+  
+  // Find released movies (releaseDate <= now) for active showtime scheduling
+  const releasedMovies = createdMovies.filter((m) => m.releaseDate <= now);
+  if (releasedMovies.length === 0) {
+    // Safety fallback: if all fetched movies happen to be future releases, use the first 4
+    releasedMovies.push(...createdMovies.slice(0, 4));
+  }
 
-  const releasedMovies = await prisma.movie.findMany({
-    where: { title: { in: releasedTitles } },
-  });
-
-  // Turnaround & cleaning buffer between screenings (minutes)
   const CLEANING_BUFFER_MINUTES = 25;
-
+  const SCHEDULE_DAYS = 14; // Full 2-week rolling window
   let totalShowtimes = 0;
 
-  // Schedule across 3 days (today, tomorrow, day after tomorrow)
-  for (let dayOffset = 0; dayOffset <= 2; dayOffset++) {
+  for (let dayOffset = 0; dayOffset < SCHEDULE_DAYS; dayOffset++) {
     for (let screenIndex = 0; screenIndex < screens.length; screenIndex++) {
       const screen = screens[screenIndex];
 
@@ -224,11 +332,11 @@ async function main() {
       currentTime.setDate(currentTime.getDate() + dayOffset);
       currentTime.setHours(11, 0, 0, 0);
 
-      // Closing limit: last show must start before 22:30
+      // Last screening must start before 22:30
       const closingTime = new Date(currentTime);
       closingTime.setHours(22, 30, 0, 0);
 
-      // Stagger starting movie across screens and days to ensure balanced programming
+      // Stagger movies across screens and days to ensure varied programming
       let movieIndex = (screenIndex + dayOffset) % releasedMovies.length;
 
       while (currentTime < closingTime) {
@@ -246,23 +354,22 @@ async function main() {
         });
         totalShowtimes++;
 
-        // Next screening starts after movie duration + cleaning buffer
+        // Next screening starts after duration + cleaning buffer
         currentTime.setTime(endsAt.getTime() + CLEANING_BUFFER_MINUTES * 60 * 1000);
 
-        // Round up to nearest 5 minutes for clean cinema schedule intervals (e.g. 13:43 -> 13:45)
+        // Round up to nearest 5 minutes for clean intervals (e.g. 13:42 -> 13:45)
         const remainderMinutes = currentTime.getMinutes() % 5;
         if (remainderMinutes !== 0) {
           currentTime.setMinutes(currentTime.getMinutes() + (5 - remainderMinutes));
         }
 
-        // Cycle to next movie for this screen
         movieIndex = (movieIndex + 1) % releasedMovies.length;
       }
     }
   }
-  console.log(`✅ Created ${totalShowtimes} conflict-free showtimes across ${screens.length} screens.`);
+  console.log(`✅ Created ${totalShowtimes} conflict-free showtimes across ${screens.length} screens for the next ${SCHEDULE_DAYS} days.`);
 
-  // Automated Conflict Verification Assertion
+  // Automated Conflict Verification Assertion across all screens
   const allShowtimes = await prisma.showtime.findMany({
     orderBy: [{ screenId: 'asc' }, { startsAt: 'asc' }],
   });
@@ -273,7 +380,7 @@ async function main() {
     const next = allShowtimes[i + 1];
     if (current.screenId === next.screenId && current.endsAt > next.startsAt) {
       console.error(
-        `❌ Overlap detected on screen ${current.screenId}: [${current.startsAt.toLocaleTimeString()} - ${current.endsAt.toLocaleTimeString()}] overlaps with [${next.startsAt.toLocaleTimeString()} - ${next.endsAt.toLocaleTimeString()}]`
+        `❌ Overlap on screen ${current.screenId}: [${current.startsAt.toLocaleTimeString()} - ${current.endsAt.toLocaleTimeString()}] overlaps with [${next.startsAt.toLocaleTimeString()} - ${next.endsAt.toLocaleTimeString()}]`
       );
       conflictCount++;
     }
@@ -298,7 +405,7 @@ async function main() {
   });
   console.log('👤 Admin user created: admin@cinego.com / admin123');
 
-  console.log('\n✅ Seeding complete!');
+  console.log('\n✨ Seeding complete!');
   console.log('   Run `npx prisma studio` to inspect the data.\n');
 }
 
