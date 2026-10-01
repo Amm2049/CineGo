@@ -139,14 +139,18 @@ async function main() {
   }
 
   for (const name of standardGenres) {
-    const genre = await prisma.genre.create({ data: { name } });
+    const genre = await prisma.genre.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
     genreMap[name] = genre.id;
   }
-  console.log(`🏷️  Created ${standardGenres.length} genres in taxonomy.`);
+  console.log(`🏷️  Created/verified ${standardGenres.length} genres in taxonomy.`);
 
   // ── 5. Movies (Live TMDB Sync or Curated Fallback) ───────────
   const now = new Date();
-  let moviesToSeed: SeedMovieItem[] = [];
+  const rawMovies: SeedMovieItem[] = [];
 
   if (hasTmdbCredentials()) {
     try {
@@ -157,18 +161,26 @@ async function main() {
       ]);
 
       const nowPlayingTop = nowPlayingRes.results.slice(0, 5);
-      const upcomingTop = upcomingRes.results.slice(0, 4);
+      const nowPlayingIds = new Set(nowPlayingTop.map((m) => m.id));
+      const upcomingTop = upcomingRes.results
+        .filter((m) => !nowPlayingIds.has(m.id))
+        .slice(0, 4);
 
       console.log(`📥 Syncing ${nowPlayingTop.length} Now Playing & ${upcomingTop.length} Upcoming movies...`);
 
       for (const item of nowPlayingTop) {
         const details = await getMovieDetails(item.id);
-        moviesToSeed.push({
+        let relDate = details.release_date ? new Date(details.release_date) : now;
+        if (relDate > now) {
+          relDate = now; // Ensure Now Playing qualifies as released
+        }
+
+        rawMovies.push({
           tmdbId: details.id,
           title: details.title,
           description: details.overview || details.tagline || 'Experience this blockbuster in theaters.',
           duration: details.runtime && details.runtime > 0 ? details.runtime : 120,
-          releaseDate: new Date(details.release_date || now),
+          releaseDate: relDate,
           posterUrl: getTmdbImageUrl(details.poster_path, 'w500'),
           backdropUrl: getTmdbImageUrl(details.backdrop_path, 'original'),
           genres: details.genres.map((g) => (g.name === 'Science Fiction' ? 'Sci-Fi' : g.name)),
@@ -177,12 +189,12 @@ async function main() {
 
       for (const item of upcomingTop) {
         const details = await getMovieDetails(item.id);
-        // Ensure upcoming release date is dynamically in the future
-        let relDate = new Date(details.release_date);
+        let relDate = details.release_date ? new Date(details.release_date) : new Date(now.getTime() + 21 * 86400000);
         if (relDate <= now) {
           relDate = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000);
         }
-        moviesToSeed.push({
+
+        rawMovies.push({
           tmdbId: details.id,
           title: details.title,
           description: details.overview || details.tagline || 'Coming soon exclusively to theaters.',
@@ -196,21 +208,21 @@ async function main() {
       console.log('✅ Successfully fetched live movies from TMDB API.');
     } catch (apiError) {
       console.warn('⚠️  TMDB API sync failed, switching to curated offline dataset:', apiError);
-      moviesToSeed = [];
+      rawMovies.length = 0;
     }
   }
 
   // Fallback dataset if no API credentials or API call failed
-  if (moviesToSeed.length === 0) {
+  if (rawMovies.length === 0) {
     console.log('📦 Using curated blockbuster catalog with dynamic rolling release dates.');
-    moviesToSeed = [
+    rawMovies.push(
       // Now Showing (released with past release dates)
       {
         tmdbId: 533535,
         title: 'Deadpool & Wolverine',
         description: 'A listless Wade Wilson toils away in civilian life with his days as Deadpool behind him. But when his homeworld faces an existential threat, Wade must reluctantly suit-up again with an even more reluctant Wolverine.',
         duration: 128,
-        releaseDate: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000), // 60 days ago
+        releaseDate: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000),
         posterUrl: 'https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg',
         backdropUrl: 'https://image.tmdb.org/t/p/original/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg',
         genres: ['Action', 'Comedy', 'Sci-Fi'],
@@ -220,7 +232,7 @@ async function main() {
         title: 'Gladiator II',
         description: 'Years after witnessing the death of Maximus, Lucius is forced to enter the Colosseum after his home is conquered by tyrannical emperors who lead Rome with an iron fist, fighting to restore glory to the Empire.',
         duration: 148,
-        releaseDate: new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000), // 40 days ago
+        releaseDate: new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000),
         posterUrl: 'https://image.tmdb.org/t/p/w500/2cxhvwyEwRlysAmRH4iodkvo0z5.jpg',
         backdropUrl: 'https://image.tmdb.org/t/p/original/tOqIwliWMovSIZ9DyvHcHI7p2im.jpg',
         genres: ['Action', 'Drama'],
@@ -230,7 +242,7 @@ async function main() {
         title: 'Wicked',
         description: 'In the land of Oz, misunderstood green-skinned Elphaba forms an unlikely friendship with popular Glinda at Shiz University, tested as they fulfill their respective destinies as Glinda the Good and the Wicked Witch of the West.',
         duration: 161,
-        releaseDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+        releaseDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
         posterUrl: 'https://image.tmdb.org/t/p/w500/xDGbZ0JJ3mYaGKy4Nzd9Kph6M9L.jpg',
         backdropUrl: 'https://image.tmdb.org/t/p/original/fyZ6SDUS4o9jp2EHxfZa3qS9ean.jpg',
         genres: ['Fantasy', 'Drama', 'Romance'],
@@ -240,7 +252,7 @@ async function main() {
         title: 'The Wild Robot',
         description: 'After a shipwreck, an intelligent robot called Roz is stranded on an uninhabited island and bonds with the island animals, adopting an orphaned baby goose in a moving tale of survival and connection.',
         duration: 102,
-        releaseDate: new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000), // 20 days ago
+        releaseDate: new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000),
         posterUrl: 'https://image.tmdb.org/t/p/w500/wTnV3PCVW5O92JMrFvvrRcV39RU.jpg',
         backdropUrl: 'https://image.tmdb.org/t/p/original/1pmXyN3sKeYoUhu5VBZiDU4BX21.jpg',
         genres: ['Animation', 'Sci-Fi', 'Drama'],
@@ -250,7 +262,7 @@ async function main() {
         title: 'Captain America: Brave New World',
         description: 'Sam Wilson finds himself in the middle of an international incident after meeting with newly elected U.S. President Thaddeus Ross, uncovering a nefarious global plot before the mastermind behind it can plunge the world into chaos.',
         duration: 118,
-        releaseDate: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
+        releaseDate: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
         posterUrl: 'https://image.tmdb.org/t/p/w500/pzIddUEMWhWzfvLI3TwxUG2wGoi.jpg',
         backdropUrl: 'https://image.tmdb.org/t/p/original/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg',
         genres: ['Action', 'Sci-Fi', 'Thriller'],
@@ -261,7 +273,7 @@ async function main() {
         title: 'Superman',
         description: 'Superman, a journalist in Metropolis, embarks on a journey to reconcile his Kryptonian heritage with his human upbringing as Clark Kent in James Gunn new DC Universe vision.',
         duration: 135,
-        releaseDate: new Date(now.getTime() + 18 * 24 * 60 * 60 * 1000), // +18 days into future
+        releaseDate: new Date(now.getTime() + 18 * 24 * 60 * 60 * 1000),
         posterUrl: 'https://image.tmdb.org/t/p/w500/ldyfo0BKmz5rWtJJKCvwaNS4cJT.jpg',
         backdropUrl: 'https://image.tmdb.org/t/p/original/yRBc6WY3r1Fz5Cjd6DhSvzqunED.jpg',
         genres: ['Action', 'Sci-Fi'],
@@ -271,7 +283,7 @@ async function main() {
         title: 'The Fantastic Four: First Steps',
         description: 'Set against the vibrant backdrop of a 1960s retro-futuristic world, Marvel First Family must balance their roles as superheroes and a tight-knit family while defending Earth against the cosmic entity Galactus.',
         duration: 130,
-        releaseDate: new Date(now.getTime() + 35 * 24 * 60 * 60 * 1000), // +35 days into future
+        releaseDate: new Date(now.getTime() + 35 * 24 * 60 * 60 * 1000),
         posterUrl: 'https://image.tmdb.org/t/p/w500/veiSodk4JS4M2kBZCqBWeEEdMCr.jpg',
         backdropUrl: 'https://image.tmdb.org/t/p/original/pwCZP8QjiQRvz15MGxQckW0wl3a.jpg',
         genres: ['Action', 'Sci-Fi', 'Fantasy'],
@@ -281,29 +293,58 @@ async function main() {
         title: 'Avengers: Doomsday',
         description: 'Beloved heroes from distinct universes are set on a deadly collision course and face an existential threat unlike anything they have ever encountered as Doctor Doom rises to reshape reality.',
         duration: 165,
-        releaseDate: new Date(now.getTime() + 65 * 24 * 60 * 60 * 1000), // +65 days into future
+        releaseDate: new Date(now.getTime() + 65 * 24 * 60 * 60 * 1000),
         posterUrl: 'https://image.tmdb.org/t/p/w500/jzPwsojjFStf5lR5Nm07w2hH56G.jpg',
         backdropUrl: 'https://image.tmdb.org/t/p/original/s4v0UX1anfXm0UvloLsTTJ4v222.jpg',
         genres: ['Action', 'Sci-Fi', 'Fantasy'],
-      },
-    ];
+      }
+    );
+  }
+
+  // Deduplicate movies by tmdbId to ensure unique constraint satisfaction
+  const seenTmdbIds = new Set<number>();
+  const uniqueMoviesToSeed: SeedMovieItem[] = [];
+  for (const m of rawMovies) {
+    if (!seenTmdbIds.has(m.tmdbId)) {
+      seenTmdbIds.add(m.tmdbId);
+      uniqueMoviesToSeed.push(m);
+    }
   }
 
   const createdMovies = [];
-  for (const movieData of moviesToSeed) {
+  for (const movieData of uniqueMoviesToSeed) {
     const { genres: genreList, ...data } = movieData;
-    const movie = await prisma.movie.create({ data });
+    const movie = await prisma.movie.upsert({
+      where: { tmdbId: data.tmdbId },
+      update: { ...data },
+      create: { ...data },
+    });
 
     for (const genreName of genreList) {
-      const genreId = genreMap[genreName] || genreMap['Action'];
-      if (genreId) {
-        await prisma.movieGenre.create({
-          data: {
+      let genreId = genreMap[genreName];
+      if (!genreId) {
+        const newGenre = await prisma.genre.upsert({
+          where: { name: genreName },
+          update: {},
+          create: { name: genreName },
+        });
+        genreId = newGenre.id;
+        genreMap[genreName] = genreId;
+      }
+
+      await prisma.movieGenre.upsert({
+        where: {
+          movieId_genreId: {
             movieId: movie.id,
             genreId,
           },
-        });
-      }
+        },
+        update: {},
+        create: {
+          movieId: movie.id,
+          genreId,
+        },
+      });
     }
     createdMovies.push(movie);
     console.log(`🎬 Created movie: ${movie.title} (tmdbId: ${movie.tmdbId})`);
@@ -313,10 +354,9 @@ async function main() {
   console.log('\n🎟️  Scheduling conflict-free active showtimes across 14-day rolling window...');
   
   // Find released movies (releaseDate <= now) for active showtime scheduling
-  const releasedMovies = createdMovies.filter((m) => m.releaseDate <= now);
+  let releasedMovies = createdMovies.filter((m) => m.releaseDate <= now);
   if (releasedMovies.length === 0) {
-    // Safety fallback: if all fetched movies happen to be future releases, use the first 4
-    releasedMovies.push(...createdMovies.slice(0, 4));
+    releasedMovies = createdMovies.slice(0, 4);
   }
 
   const CLEANING_BUFFER_MINUTES = 25;
@@ -336,7 +376,6 @@ async function main() {
       const closingTime = new Date(currentTime);
       closingTime.setHours(22, 30, 0, 0);
 
-      // Stagger movies across screens and days to ensure varied programming
       let movieIndex = (screenIndex + dayOffset) % releasedMovies.length;
 
       while (currentTime < closingTime) {
@@ -357,7 +396,7 @@ async function main() {
         // Next screening starts after duration + cleaning buffer
         currentTime.setTime(endsAt.getTime() + CLEANING_BUFFER_MINUTES * 60 * 1000);
 
-        // Round up to nearest 5 minutes for clean intervals (e.g. 13:42 -> 13:45)
+        // Round up to nearest 5 minutes for clean intervals
         const remainderMinutes = currentTime.getMinutes() % 5;
         if (remainderMinutes !== 0) {
           currentTime.setMinutes(currentTime.getMinutes() + (5 - remainderMinutes));
