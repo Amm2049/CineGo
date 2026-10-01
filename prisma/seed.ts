@@ -1,4 +1,4 @@
-﻿// prisma/seed.ts
+// prisma/seed.ts
 // CineGo — Database Seed Script
 // Supports Live TMDB API Sync with resilient offline fallback
 // Generates a 14-day conflict-free rolling showtime schedule
@@ -155,21 +155,28 @@ async function main() {
   if (hasTmdbCredentials()) {
     try {
       console.log('\n🌐 Live TMDB API credentials detected! Syncing live movies...');
-      const [nowPlayingRes, upcomingRes] = await Promise.all([
+      const [nowPlayingRes, upcomingRes1, upcomingRes2] = await Promise.all([
         getNowPlayingMovies(1),
         getUpcomingMovies(1),
+        getUpcomingMovies(2),
       ]);
 
-      const nowPlayingTop = nowPlayingRes.results.slice(0, 5);
+      const nowPlayingTop = nowPlayingRes.results.slice(0, 10);
       const nowPlayingIds = new Set(nowPlayingTop.map((m) => m.id));
-      const upcomingTop = upcomingRes.results
+      const allUpcoming = [...upcomingRes1.results, ...upcomingRes2.results];
+      const upcomingTop = allUpcoming
         .filter((m) => !nowPlayingIds.has(m.id))
-        .slice(0, 4);
+        .slice(0, 20);
 
       console.log(`📥 Syncing ${nowPlayingTop.length} Now Playing & ${upcomingTop.length} Upcoming movies...`);
 
-      for (const item of nowPlayingTop) {
-        const details = await getMovieDetails(item.id);
+      const [nowPlayingDetails, upcomingDetails] = await Promise.all([
+        Promise.all(nowPlayingTop.map((item) => getMovieDetails(item.id).catch(() => null))),
+        Promise.all(upcomingTop.map((item) => getMovieDetails(item.id).catch(() => null))),
+      ]);
+
+      for (const details of nowPlayingDetails) {
+        if (!details) continue;
         let relDate = details.release_date ? new Date(details.release_date) : now;
         if (relDate > now) {
           relDate = now; // Ensure Now Playing qualifies as released
@@ -187,8 +194,8 @@ async function main() {
         });
       }
 
-      for (const item of upcomingTop) {
-        const details = await getMovieDetails(item.id);
+      for (const details of upcomingDetails) {
+        if (!details) continue;
         let relDate = details.release_date ? new Date(details.release_date) : new Date(now.getTime() + 21 * 86400000);
         if (relDate <= now) {
           relDate = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000);
@@ -205,7 +212,7 @@ async function main() {
           genres: details.genres.map((g) => (g.name === 'Science Fiction' ? 'Sci-Fi' : g.name)),
         });
       }
-      console.log('✅ Successfully fetched live movies from TMDB API.');
+      console.log(`✅ Successfully fetched ${rawMovies.length} live movies from TMDB API.`);
     } catch (apiError) {
       console.warn('⚠️  TMDB API sync failed, switching to curated offline dataset:', apiError);
       rawMovies.length = 0;

@@ -1,5 +1,5 @@
 # CINEMA TICKET BOOKING SYSTEM (CineGo)
-## Full Software Engineering Project Scope & MVP Specification (Version 1.4)
+## Full Software Engineering Project Scope & MVP Specification (Version 1.5)
 
 | Metadata Field | Value |
 | :--- | :--- |
@@ -8,14 +8,14 @@
 | **PROJECT MODEL** | Solo Project / Small Team MVP |
 | **ARCHITECTURE** | Layered Monolithic Architecture (Clean Code & SE Best Practices) |
 | **PRIMARY ROLES** | Customer + Admin |
-| **DOCUMENT VERSION** | 1.4 (TMDB Ingestion + Derived Movie Status + DB Seat Hold — upgraded from v1.3) |
+| **DOCUMENT VERSION** | 1.5 (TMDB Automated Vercel Cron Job + On-Demand Curation + Derived Movie Status — upgraded from v1.4) |
 
 ---
 
 ## 1. Executive Summary
 The **Cinema Ticket Booking System (CineGo)** is a full-stack web application built with **Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, PostgreSQL, Prisma ORM, Auth.js, Google Gemini LLM API, and TMDB REST API**. 
 
-The platform enables customers to discover movies (ingested from TMDB), view in-line AI match recommendations (`🔥 95% AI Match`), explore cinema screen formats on an Experiences FYI page, select seats on an interactive layout with dynamic row pricing, temporarily hold seats during checkout, complete a simulated payment, and receive a digital ticket pass containing a scannable QR code. Movie availability status ("Now Showing" vs. "Upcoming") is computed dynamically from `releaseDate` and active showtime existence — never stored as a manual flag. Administrators import movies directly from TMDB, manage showtimes, and verify customer tickets using an integrated **Camera WebCam QR Scanner**.
+The platform enables customers to discover movies (ingested from TMDB via automated weekly Vercel Cron Job and Admin curation), view in-line AI match recommendations (`🔥 95% AI Match`), explore cinema screen formats on an Experiences FYI page, select seats on an interactive layout with dynamic row pricing, temporarily hold seats during checkout, complete a simulated payment, and receive a digital ticket pass containing a scannable QR code. Movie availability status ("Now Showing" vs. "Upcoming") is computed dynamically from `releaseDate` and active showtime existence — never stored as a manual flag. Administrators can trigger a 1-Click bulk sync, import specific movies directly from TMDB, manage showtimes, and verify customer tickets using an integrated **Camera WebCam QR Scanner**.
 
 ---
 
@@ -31,6 +31,8 @@ src/
 │   ├── (customer)/             # Customer browsing, movies, experiences, seat map, tickets
 │   ├── admin/                  # Admin dashboard & ticket scanner
 │   └── api/                    # RESTful serverless API endpoints & Server Actions
+│       ├── cron/               # Automated Vercel Cron jobs (weekly movie sync)
+│       └── ...
 ├── components/                 # Reusable React UI Components
 │   ├── ui/                     # shadcn/ui primitive components (Button, Dialog, Card)
 │   ├── layout/                 # Navbar, Footer, Sidebar
@@ -43,6 +45,7 @@ src/
 │   ├── gemini.ts               # Google Gemini LLM API client wrapper
 │   └── tmdb.ts                 # TMDB REST API client wrapper (movie import)
 ├── services/                   # Business Logic & Domain Services (Separation of Concerns)
+│   ├── movie-sync.service.ts   # TMDB fetch & upsert logic (shared by Cron & Admin Sync)
 │   ├── recommendation.service.ts
 │   ├── booking.service.ts
 │   ├── seat.service.ts         # Seat hold (heldUntil) & availability logic
@@ -80,7 +83,7 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 | **AI Recommendation** | Google Gemini LLM API (`@google/genai`) | Structured JSON generation for movie match scores (%) and 1-sentence AI explanations rendered as **In-Line Badges**. |
 | **Authentication** | Auth.js (NextAuth) + bcrypt | Hashed credentials & role-based route protection (`CUSTOMER`, `ADMIN`). |
 | **QR Code System** | `qrcode.react` + `html5-qrcode` | `qrcode.react` renders ticket QR codes; `html5-qrcode` powers the WebCam Scanner. |
-| **Movie Data** | TMDB REST API (Curated) | Admin imports movies by searching TMDB title; metadata (title, overview, runtime, release date, poster, backdrop, genres) is fetched and upserted via `tmdbId` without cron jobs. `prisma/seed.ts` supports live TMDB sync with a 14-day rolling window. `next.config.ts` whitelists `image.tmdb.org`. |
+| **Movie Data & Ingestion** | TMDB REST API + Vercel Cron | Hybrid ingestion architecture: Automated weekly synchronization via **Vercel Cron Job** (`/api/cron/sync-movies` secured with `CRON_SECRET`) + Admin 1-Click "⚡ Sync Latest Releases" bulk trigger + Admin manual search & import (`POST /api/admin/movies/sync`). Standard catalog target: **10 Now Showing** and **20 Upcoming** releases. Safe idempotent upsert via `tmdbId`. `prisma/seed.ts` supports live TMDB sync with a 14-day rolling window. `next.config.ts` whitelists `image.tmdb.org`. |
 | **Media Handling** | External Image URLs | Movie poster (portrait) & hero/backdrop (landscape) images linked via TMDB CDN URLs (`image.tmdb.org`). |
 | **Testing & CI/CD** | Vitest + Playwright + GitHub Actions | Unit, integration, E2E, and concurrency testing with automated CI on Vercel. |
 
@@ -103,7 +106,7 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 
 ### 🛠️ 4.3 Admin Pages (4 Pages)
 10. **Admin Dashboard (`/admin`):** Operational overview metrics (total movies, showtimes, revenue).
-11. **Manage Movies (`/admin/movies`):** Import movies from TMDB by searching title — admin selects a result and clicks Import to upsert movie data (title, description, runtime, release date, poster, backdrop, genres) via `POST /api/admin/movies/sync`. Existing imported movies can be edited or deactivated.
+11. **Manage Movies (`/admin/movies`):** Features a 1-Click **"⚡ Sync Latest Releases"** button to trigger instant catalog synchronization with TMDB, alongside search-by-title import (`POST /api/admin/movies/sync`) — admin selects a result and clicks Import to upsert movie data (title, description, runtime, release date, poster, backdrop, genres). Existing imported movies can be edited or deactivated.
 12. **Manage Showtimes (`/admin/showtimes`):** Create showtime schedules per screen with overlap validation.
 13. **WebCam QR Ticket Scanner (`/admin/scanner`):** Live camera WebCam QR scanner (`html5-qrcode`) + manual ticket code input fallback to verify entry (`VALID`, `INVALID`, `ALREADY USED`).
 
@@ -119,7 +122,7 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 * **FR-06 (Concurrency & Holds):** Seats held for 5 minutes via `heldUntil` (set to `NOW + 5min` on seat selection, cleared on expiry or payment). Database transaction guarantees atomic confirmation. `@@unique([showtimeId, seatId])` prevents double-booking.
 * **FR-07 (Digital Ticket & QR):** Paid bookings generate digital tickets with rendered QR code passes.
 * **FR-08 (Admin Scanner & CRUD):** Admin WebCam QR Scanner reads QR tokens or manual ticket codes and displays ticket validation results. Admin manages Showtimes via form-based CRUD.
-* **FR-09 (TMDB Movie Ingestion & Curated Curation):** Admin curates the cinema catalog on-demand via `POST /api/admin/movies/sync` by searching TMDB titles. The API fetches movie metadata (synopsis, runtime, release date, poster, backdrop, genres) and upserts the `Movie` record using `tmdbId` as the unique key to prevent duplicates. No background cron jobs are used—availability is driven by Admin curation and showtime scheduling. In development, `prisma/seed.ts` supports live TMDB sync with an offline fallback, generating a 14-day conflict-free rolling showtime schedule.
+* **FR-09 (TMDB Movie Ingestion & Automated Cron Sync):** Hybrid ingestion model. (1) **Automated Vercel Cron Job:** Runs weekly via `GET /api/cron/sync-movies` (secured with `CRON_SECRET` authorization header) to keep the catalog fresh with 10 Now Showing and 20 Upcoming releases. (2) **Admin On-Demand Curation:** Admin can trigger an immediate 1-click catalog sync or search and import specific TMDB titles via `POST /api/admin/movies/sync`. The system fetches movie metadata (title, overview, runtime, release date, poster, backdrop, genres) and idempotently upserts `Movie` records using `tmdbId` as the unique key to prevent duplicates. Availability status remains derived dynamically from `releaseDate` and future showtimes. In development, `prisma/seed.ts` syncs live TMDB data with 10 Now Playing + 20 Upcoming movies and schedules a 14-day conflict-free rolling showtime window.
 
 ---
 
@@ -304,7 +307,7 @@ enum TicketStatus {
 1. **Deployed Application:** Deployed Next.js full-stack web application on Vercel.
 2. **Database & ORM:** PostgreSQL database hosted on Supabase/Neon with Prisma migrations & seed data.
 3. **Clean Code & GitFlow:** Modular directory structure following SE best practices with disciplined 4-tier `main` $\rightarrow$ `develop` $\rightarrow$ `phase/*` (permanent) $\rightarrow$ `feature/*` (temporary) Git branching.
-4. **TMDB Movie Ingestion:** Admin `/admin/movies` page with TMDB search-and-import flow; `Movie.tmdbId` prevents duplicate imports.
+4. **TMDB Movie Ingestion & Automated Cron Sync:** Automated weekly Vercel Cron Job (`/api/cron/sync-movies`), Admin 1-Click bulk sync button, and manual TMDB search-and-import flow with target catalog of 10 Now Showing and 20 Upcoming movies; `Movie.tmdbId` prevents duplicates via idempotent upsert.
 5. **Derived Movie Status:** "Now Showing" and "Upcoming" sections on homepage and catalog page driven by live Prisma queries — no stored status flags.
 6. **AI Recommendation Badges:** Gemini LLM API integration rendering in-line AI match badges and 1-sentence insights.
 7. **Seat Concurrency Protection:** PostgreSQL `heldUntil` seat hold (5-minute TTL) + transaction and unique constraint protection against double-booking.

@@ -65,7 +65,7 @@ Create permanent milestone branch `phase/phase2-database` off `develop`. Define 
   * Execute initial migration: `npx prisma migrate dev --name init`.
   * Merge `feature/prisma-schema` into `phase/phase2-database` and delete feature branch.
 * [ ] Branch `feature/seed-data` off `phase/phase2-database`:
-  * Write `prisma/seed.ts` script to populate screens, seat layouts (Rows A–F with row pricing), genres, and sample movies (supporting live TMDB API sync with resilient offline fallback, and a 14-day rolling conflict-free showtime schedule).
+  * Write `prisma/seed.ts` script to populate screens, seat layouts (Rows A–F with row pricing), genres, and sample movies (supporting live TMDB API sync with standard catalog target of 10 Now Showing + 20 Upcoming movies, resilient offline fallback, and a 14-day rolling conflict-free showtime schedule).
   * Run seed script (`npx prisma db seed`).
   * Merge `feature/seed-data` into `phase/phase2-database` and delete feature branch.
 * [ ] Merge `phase/phase2-database` into `develop` and preserve `phase/phase2-database` on GitHub.
@@ -221,14 +221,25 @@ Create permanent milestone branch `phase/phase8-admin-deployment` off `develop`.
   * Create `src/lib/tmdb.ts` — thin `fetch` wrapper for TMDB REST API (no SDK needed):
     * `searchMovies(query: string)` — calls `GET /search/movie`.
     * `getMovieDetails(tmdbId: number)` — calls `GET /movie/{id}` with `append_to_response=credits`.
-  * Build `POST /api/admin/movies/sync` Route Handler:
-    * Accepts `{ tmdbId: number }` in the request body.
-    * Fetches full movie details from TMDB, maps genre names to local `Genre` records.
-    * Upserts `Movie` using `prisma.movie.upsert({ where: { tmdbId }, ... })` — safe to re-import.
+    * `getNowPlayingMovies(page?: number)` — calls `GET /movie/now_playing`.
+    * `getUpcomingMovies(page?: number)` — calls `GET /movie/upcoming`.
+  * Create `src/services/movie-sync.service.ts` — shared ingestion & synchronization domain service:
+    * Encapsulates fetching 10 Now Showing + 20 Upcoming movies from TMDB API.
+    * Resolves genres, deduplicates `tmdbId`, and idempotently upserts `Movie` records.
+  * Build Automated Vercel Cron Job (`src/app/api/cron/sync-movies/route.ts`):
+    * `GET` handler protected by `Authorization: Bearer ${CRON_SECRET}` header validation.
+    * Calls `movie-sync.service.ts` to keep the catalog fresh without manual intervention.
+  * Add `vercel.json` with cron schedule configuration:
+    * Path: `/api/cron/sync-movies`, Schedule: `0 0 * * 1` (weekly on Monday at midnight UTC).
+  * Build Admin On-Demand Bulk Sync (`POST /api/admin/movies/sync-all`):
+    * Admin-authenticated route handler triggering instant catalog sync.
+  * Build Single Movie Sync (`POST /api/admin/movies/sync`):
+    * Accepts `{ tmdbId: number }` in request body and imports/updates that specific title.
   * Build Admin Movies Page (`/admin/movies`):
+    * 1-Click **"⚡ Sync Latest Releases"** button with live progress indicator and toast notifications.
     * TMDB search input → live results list → **Import** button per result.
-    * Imported movies table with edit (title, description override) and deactivate actions.
-  * Add `TMDB_ACCESS_TOKEN=` to `.env.example`.
+    * Imported movies table with edit (title, description override) and active/deactivate toggle.
+  * Add `CRON_SECRET=` and `TMDB_ACCESS_TOKEN=` to `.env.example`.
   * Merge `feature/admin-movies-tmdb` into `phase/phase8-admin-deployment` and delete feature branch.
 * [ ] Branch `feature/admin-showtimes` off `phase/phase8-admin-deployment`:
   * Build Admin Dashboard (`/admin`): operational overview metrics (total movies, showtimes, revenue).
@@ -248,5 +259,7 @@ Create permanent milestone branch `phase/phase8-admin-deployment` off `develop`.
 * [ ] Finally merge `develop` into `main` for Production Release!
 
 ### ✅ Verification Checkpoint
+* Test `/api/cron/sync-movies` endpoint with valid and invalid `CRON_SECRET` tokens.
+* Test Admin 1-Click Sync button and single movie search-and-import on `/admin/movies`.
 * Test WebCam QR scanner with a mobile phone screen displaying a digital ticket pass. Verify ticket marks `USED`.
 * Verify green build status on GitHub Actions & live Vercel production deployment URL.
