@@ -65,7 +65,7 @@ Create permanent milestone branch `phase/phase2-database` off `develop`. Define 
   * Execute initial migration: `npx prisma migrate dev --name init`.
   * Merge `feature/prisma-schema` into `phase/phase2-database` and delete feature branch.
 * [ ] Branch `feature/seed-data` off `phase/phase2-database`:
-  * Write `prisma/seed.ts` script to populate screens, seat layouts (Rows A–F with row pricing), genres, and sample movies (with real TMDB poster URLs as placeholders — will be replaced by live TMDB import in Phase 8).
+  * Write `prisma/seed.ts` script to populate screens, seat layouts (Rows A–F with row pricing), genres, and sample movies (supporting live TMDB API sync with resilient offline fallback, and a 14-day rolling conflict-free showtime schedule).
   * Run seed script (`npx prisma db seed`).
   * Merge `feature/seed-data` into `phase/phase2-database` and delete feature branch.
 * [ ] Merge `phase/phase2-database` into `develop` and preserve `phase/phase2-database` on GitHub.

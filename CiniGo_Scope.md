@@ -80,7 +80,7 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 | **AI Recommendation** | Google Gemini LLM API (`@google/genai`) | Structured JSON generation for movie match scores (%) and 1-sentence AI explanations rendered as **In-Line Badges**. |
 | **Authentication** | Auth.js (NextAuth) + bcrypt | Hashed credentials & role-based route protection (`CUSTOMER`, `ADMIN`). |
 | **QR Code System** | `qrcode.react` + `html5-qrcode` | `qrcode.react` renders ticket QR codes; `html5-qrcode` powers the WebCam Scanner. |
-| **Movie Data** | TMDB REST API | Admin imports movies by searching TMDB title; metadata (title, overview, runtime, release date, poster, backdrop, genres) is fetched and upserted via `tmdbId`. `next.config.ts` already whitelists `image.tmdb.org`. |
+| **Movie Data** | TMDB REST API (Curated) | Admin imports movies by searching TMDB title; metadata (title, overview, runtime, release date, poster, backdrop, genres) is fetched and upserted via `tmdbId` without cron jobs. `prisma/seed.ts` supports live TMDB sync with a 14-day rolling window. `next.config.ts` whitelists `image.tmdb.org`. |
 | **Media Handling** | External Image URLs | Movie poster (portrait) & hero/backdrop (landscape) images linked via TMDB CDN URLs (`image.tmdb.org`). |
 | **Testing & CI/CD** | Vitest + Playwright + GitHub Actions | Unit, integration, E2E, and concurrency testing with automated CI on Vercel. |
 
@@ -119,7 +119,7 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 * **FR-06 (Concurrency & Holds):** Seats held for 5 minutes via `heldUntil` (set to `NOW + 5min` on seat selection, cleared on expiry or payment). Database transaction guarantees atomic confirmation. `@@unique([showtimeId, seatId])` prevents double-booking.
 * **FR-07 (Digital Ticket & QR):** Paid bookings generate digital tickets with rendered QR code passes.
 * **FR-08 (Admin Scanner & CRUD):** Admin WebCam QR Scanner reads QR tokens or manual ticket codes and displays ticket validation results. Admin manages Showtimes via form-based CRUD.
-* **FR-09 (TMDB Movie Ingestion):** Admin imports movies via `POST /api/admin/movies/sync` by searching TMDB. The API fetches movie metadata from TMDB, maps genre names, and upserts the `Movie` record using `tmdbId` as the unique key to prevent duplicates.
+* **FR-09 (TMDB Movie Ingestion & Curated Curation):** Admin curates the cinema catalog on-demand via `POST /api/admin/movies/sync` by searching TMDB titles. The API fetches movie metadata (synopsis, runtime, release date, poster, backdrop, genres) and upserts the `Movie` record using `tmdbId` as the unique key to prevent duplicates. No background cron jobs are used—availability is driven by Admin curation and showtime scheduling. In development, `prisma/seed.ts` supports live TMDB sync with an offline fallback, generating a 14-day conflict-free rolling showtime schedule.
 
 ---
 
