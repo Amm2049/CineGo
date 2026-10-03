@@ -1,20 +1,30 @@
 // src/app/page.tsx
-// CineGo Homepage -- Server Component querying live PostgreSQL database
+// CineGo Homepage -- Server Component querying live PostgreSQL database & Gemini AI Recommendations
 
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { getNowShowingMovies, getUpcomingMovies } from "@/services/movie.service";
+import { getMovieRecommendationsMap } from "@/services/recommendation.service";
 import HeroSpotlight from "@/components/movies/HeroSpotlight";
 import MovieCard from "@/components/movies/MovieCard";
 
-// Dynamic rendering to ensure showtimes and releases are always evaluated at request time
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  // Query "Now Showing" and "Upcoming Releases" concurrently via reusable movie service
+  const session = await getServerSession(authOptions);
+
+  // Concurrently fetch movies & personalized recommendations if signed in
   const [nowShowingRaw, upcomingRaw] = await Promise.all([
     getNowShowingMovies({ limit: 5 }),
     getUpcomingMovies({ limit: 5 }),
   ]);
+
+  const allMovieIds = [...nowShowingRaw.map((m) => m.id), ...upcomingRaw.map((m) => m.id)];
+
+  const recommendationMap = session?.user?.id
+    ? await getMovieRecommendationsMap(session.user.id, allMovieIds)
+    : {};
 
   // Format Spotlight data for Hero
   const spotlightMovies = nowShowingRaw.map((m) => {
@@ -70,6 +80,8 @@ export default async function HomePage() {
               {nowShowingRaw.map((movie, idx) => {
                 const screenNames = movie.showtimes.map((s) => s.screen.name);
                 const uniqueFormats = Array.from(new Set(screenNames));
+                const rec = recommendationMap[movie.id];
+
                 return (
                   <MovieCard
                     key={movie.id}
@@ -80,6 +92,8 @@ export default async function HomePage() {
                     releaseDate={movie.releaseDate}
                     genres={movie.genres.map((g) => g.genre.name)}
                     formats={uniqueFormats.length > 0 ? uniqueFormats : ["Digital 4K"]}
+                    matchScore={rec?.matchScore}
+                    matchReason={rec?.reason}
                     priority={idx < 2}
                   />
                 );
@@ -116,18 +130,23 @@ export default async function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
-              {upcomingRaw.map((movie) => (
-                <MovieCard
-                  key={movie.id}
-                  id={movie.id}
-                  title={movie.title}
-                  posterUrl={movie.posterUrl}
-                  duration={movie.duration}
-                  releaseDate={movie.releaseDate}
-                  genres={movie.genres.map((g) => g.genre.name)}
-                  isUpcoming={true}
-                />
-              ))}
+              {upcomingRaw.map((movie) => {
+                const rec = recommendationMap[movie.id];
+                return (
+                  <MovieCard
+                    key={movie.id}
+                    id={movie.id}
+                    title={movie.title}
+                    posterUrl={movie.posterUrl}
+                    duration={movie.duration}
+                    releaseDate={movie.releaseDate}
+                    genres={movie.genres.map((g) => g.genre.name)}
+                    matchScore={rec?.matchScore}
+                    matchReason={rec?.reason}
+                    isUpcoming={true}
+                  />
+                );
+              })}
             </div>
           )}
         </section>

@@ -15,6 +15,7 @@ export default function MovieCard({
   genres,
   formats = ["Digital 4K"],
   matchScore,
+  matchReason,
   isUpcoming = false,
   priority = false,
 }: MovieCardProps) {
@@ -50,8 +51,11 @@ export default function MovieCard({
             {formats[0] || "Digital 4K"}
           </span>
 
-          {matchScore && (
-            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-[#2500f0]/90 text-white border border-[#5938ff]/80 shadow-[0_0_12px_rgba(37,0,240,0.8)] backdrop-blur-md animate-pulse">
+          {typeof matchScore === "number" && (
+            <span
+              title={matchReason || `${matchScore}% Match based on your tastes`}
+              className="text-[10px] font-black px-2 py-0.5 rounded-md bg-gradient-to-r from-[#2500f0] to-[#5938ff] text-white border border-[#a5b4fc]/50 shadow-[0_0_14px_rgba(37,0,240,0.85)] backdrop-blur-md animate-pulse pointer-events-auto cursor-help"
+            >
               🔥 {matchScore}% AI Match
             </span>
           )}
@@ -73,13 +77,20 @@ export default function MovieCard({
 
       {/* Meta Content */}
       <div className="relative z-10 -mt-px p-3.5 flex flex-col flex-1 justify-between gap-2 bg-[#06071e]">
-        <div>
+        <div className="space-y-1">
           <h3 className="text-sm font-bold text-white group-hover:text-[#c7d2fe] transition-colors line-clamp-1">
             {title}
           </h3>
-          <p className="text-[11px] text-zinc-400 font-medium line-clamp-1 mt-0.5">
+          <p className="text-[11px] text-zinc-400 font-medium line-clamp-1">
             {genres.slice(0, 2).join(" · ")}
           </p>
+
+          {/* 1-Sentence AI Insight */}
+          {matchReason && (
+            <p className="text-[10px] text-[#a5b4fc] line-clamp-1 italic bg-[#2500f0]/10 border border-[#2500f0]/20 rounded px-1.5 py-0.5 mt-1">
+              ✨ {matchReason}
+            </p>
+          )}
         </div>
 
         <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between text-[11px]">

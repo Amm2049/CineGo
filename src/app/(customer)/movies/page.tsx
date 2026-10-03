@@ -1,8 +1,11 @@
 // src/app/(customer)/movies/page.tsx
-// Movies Catalog -- 2-Tab Server & Client layout querying live database
+// Movies Catalog -- 2-Tab Server & Client layout querying live database & AI recommendations
 
 import { Suspense } from "react";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { getFormattedCatalogMovies } from "@/services/movie.service";
+import { getMovieRecommendationsMap } from "@/services/recommendation.service";
 import MoviesCatalogClient from "./MoviesCatalogClient";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +16,14 @@ export const metadata = {
 };
 
 export default async function MoviesPage() {
+  const session = await getServerSession(authOptions);
   const { nowShowing, upcoming } = await getFormattedCatalogMovies();
+
+  const allMovieIds = [...nowShowing.map((m) => m.id), ...upcoming.map((m) => m.id)];
+
+  const recommendations = session?.user?.id
+    ? await getMovieRecommendationsMap(session.user.id, allMovieIds)
+    : {};
 
   return (
     <main className="flex-1 min-h-screen bg-[#03030d] text-white py-12">
@@ -34,6 +44,7 @@ export default async function MoviesPage() {
           <MoviesCatalogClient
             nowShowing={nowShowing}
             upcoming={upcoming}
+            recommendations={recommendations}
           />
         </Suspense>
       </div>

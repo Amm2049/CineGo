@@ -4,16 +4,18 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import MovieCard from "@/components/movies/MovieCard";
-import { MovieItem } from "@/types";
+import { MovieItem, RecommendationMap } from "@/types";
 
 interface MoviesCatalogClientProps {
   nowShowing: MovieItem[];
   upcoming: MovieItem[];
+  recommendations?: RecommendationMap;
 }
 
 export default function MoviesCatalogClient({
   nowShowing,
   upcoming,
+  recommendations = {},
 }: MoviesCatalogClientProps) {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") === "upcoming" ? "upcoming" : "now-showing";
@@ -84,20 +86,25 @@ export default function MoviesCatalogClient({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
-          {filteredMovies.map((movie) => (
-            <div key={movie.id} id={`movie-${movie.id}`}>
-              <MovieCard
-                id={movie.id}
-                title={movie.title}
-                posterUrl={movie.posterUrl}
-                duration={movie.duration}
-                releaseDate={movie.releaseDate}
-                genres={movie.genres}
-                formats={movie.formats}
-                isUpcoming={movie.isUpcoming}
-              />
-            </div>
-          ))}
+          {filteredMovies.map((movie) => {
+            const rec = recommendations[movie.id];
+            return (
+              <div key={movie.id} id={`movie-${movie.id}`}>
+                <MovieCard
+                  id={movie.id}
+                  title={movie.title}
+                  posterUrl={movie.posterUrl}
+                  duration={movie.duration}
+                  releaseDate={movie.releaseDate}
+                  genres={movie.genres}
+                  formats={movie.formats}
+                  matchScore={rec?.matchScore}
+                  matchReason={rec?.reason}
+                  isUpcoming={movie.isUpcoming}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
