@@ -52,6 +52,7 @@ export default async function HomePage() {
             </div>
             <Link
               href="/movies?tab=now-showing"
+              prefetch={false}
               className="text-xs font-bold text-[#c7d2fe] hover:text-white flex items-center gap-1 group transition-colors"
             >
               <span>View All Movies</span>
@@ -101,6 +102,7 @@ export default async function HomePage() {
             </div>
             <Link
               href="/movies?tab=upcoming"
+              prefetch={false}
               className="text-xs font-bold text-[#c7d2fe] hover:text-white flex items-center gap-1 group transition-colors"
             >
               <span>Explore All Upcoming</span>

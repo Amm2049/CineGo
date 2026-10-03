@@ -27,6 +27,7 @@ export default function MovieCard({
   return (
     <Link
       href={`/movies#movie-${id}`}
+      prefetch={false}
       className="group relative flex flex-col rounded-2xl bg-[#070820]/80 border border-[#2500f0]/30 hover:border-[#5938ff] transition-all duration-300 overflow-hidden shadow-lg hover:shadow-[#2500f0]/25 hover:-translate-y-1.5 focus:outline-none focus:ring-2 focus:ring-[#5938ff]"
     >
       {/* Poster Image Container with 2:3 Aspect Ratio */}

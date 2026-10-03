@@ -42,12 +42,14 @@ export default function Navbar() {
         <nav className="hidden md:flex items-center gap-1.5 bg-[#090b2c]/85 border border-[#2500f0]/35 rounded-full px-4 py-1.5 backdrop-blur-md shadow-inner">
           <Link
             href="/movies"
+            prefetch={false}
             className="text-xs font-semibold text-[#e2e8f0] hover:text-white px-3.5 py-1.5 rounded-full hover:bg-white/[0.08] transition-colors"
           >
             Movies
           </Link>
           <Link
             href="/experiences"
+            prefetch={false}
             className="text-xs font-semibold text-[#e2e8f0] hover:text-white px-3.5 py-1.5 rounded-full hover:bg-white/[0.08] transition-colors"
           >
             Experiences

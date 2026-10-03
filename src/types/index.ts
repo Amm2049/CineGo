@@ -12,6 +12,14 @@ export type MovieWithRelations = Movie & {
   })[];
 };
 
+export interface MovieRecommendation {
+  movieId: string;
+  matchScore: number;
+  reason: string;
+}
+
+export type RecommendationMap = Record<string, MovieRecommendation>;
+
 export interface MovieCardProps {
   id: string;
   title: string;
@@ -55,5 +63,6 @@ export interface MovieItem {
   genres: string[];
   formats: string[];
   isUpcoming: boolean;
+  matchScore?: number;
+  matchReason?: string;
 }
-
