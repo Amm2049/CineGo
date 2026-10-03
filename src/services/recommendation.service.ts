@@ -87,7 +87,7 @@ export async function getMovieRecommendations(
       include: {
         genres: { include: { genre: true } },
       },
-      take: 20,
+      take: candidateMovieIds ? candidateMovieIds.length : 30,
     }),
   ]);
 
@@ -156,6 +156,13 @@ Strict Instructions:
         }));
 
       if (validRecommendations.length > 0) {
+        // Gap-filling: ensure 100% of candidate movies have a score even if LLM omits any
+        const returnedIds = new Set(validRecommendations.map((r) => r.movieId));
+        const missingMovies = candidateMovies.filter((m) => !returnedIds.has(m.id));
+        if (missingMovies.length > 0) {
+          const fallbackRecs = calculateHeuristicRecommendations(userGenres, missingMovies);
+          validRecommendations.push(...fallbackRecs);
+        }
         return validRecommendations;
       }
     }
