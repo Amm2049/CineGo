@@ -11,4 +11,4 @@ const apiKey =
 // Initialize client only if API key is provided
 export const geminiClient = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-export const GEMINI_MODEL = "gemini-3.8-flash";
+export const GEMINI_MODEL = "gemini-3.5-flash";
