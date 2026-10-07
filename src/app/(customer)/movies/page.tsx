@@ -1,12 +1,13 @@
 // src/app/(customer)/movies/page.tsx
 // Movies Catalog -- 2-Tab Server & Client layout querying live database & AI recommendations
+// Uses DB-persisted recommendations with in-flight deduplication for instant navigation.
 
-import { Suspense } from "react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getFormattedCatalogMovies } from "@/services/movie.service";
 import { getMovieRecommendationsMap } from "@/services/recommendation.service";
 import MoviesCatalogClient from "./MoviesCatalogClient";
+import { RecommendationMap } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,13 +17,17 @@ export const metadata = {
 };
 
 export default async function MoviesPage() {
-  const session = await getServerSession(authOptions);
-  const { nowShowing, upcoming } = await getFormattedCatalogMovies();
+  const [session, { nowShowing, upcoming }] = await Promise.all([
+    getServerSession(authOptions),
+    getFormattedCatalogMovies(),
+  ]);
 
   const allMovieIds = [...nowShowing.map((m) => m.id), ...upcoming.map((m) => m.id)];
+  const userId = session?.user?.id;
 
-  const recommendations = session?.user?.id
-    ? await getMovieRecommendationsMap(session.user.id, allMovieIds)
+  // DB-cached lookup (~2-5ms) with on-demand compute fallback
+  const recommendations: RecommendationMap = userId
+    ? await getMovieRecommendationsMap(userId, allMovieIds)
     : {};
 
   return (
@@ -40,13 +45,11 @@ export default async function MoviesPage() {
           </p>
         </header>
 
-        <Suspense fallback={<div className="text-center text-zinc-500 py-12">Loading catalog...</div>}>
-          <MoviesCatalogClient
-            nowShowing={nowShowing}
-            upcoming={upcoming}
-            recommendations={recommendations}
-          />
-        </Suspense>
+        <MoviesCatalogClient
+          nowShowing={nowShowing}
+          upcoming={upcoming}
+          recommendations={recommendations}
+        />
       </div>
     </main>
   );

@@ -1,7 +1,9 @@
 // src/services/recommendation.service.ts
-// CineGo -- AI Movie Recommendation Engine powered by Google Gemini LLM API
+// CineGo -- Hybrid AI Movie Recommendation Engine
+// Backed by PostgreSQL JSON persistence + In-flight deduplication + Google Gemini LLM API
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { geminiClient, GEMINI_MODEL } from "@/lib/gemini";
 import { MovieRecommendation, RecommendationMap } from "@/types";
 
@@ -10,6 +12,29 @@ interface CandidateMovie {
   title: string;
   description: string;
   genres: string[];
+}
+
+// 24-hour TTL for cached recommendations in the database
+const RECOMMENDATION_TTL_MS = 24 * 60 * 60 * 1000;
+
+// In-flight deduplication map: coalesces concurrent requests for the same user
+const inFlightRequests = new Map<string, Promise<RecommendationMap>>();
+
+/**
+ * Invalidate cached recommendations for a user (e.g. when interests change or booking completes).
+ */
+export async function invalidateUserRecommendations(userId: string): Promise<void> {
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        recommendations: Prisma.DbNull,
+        recommendationsUpdatedAt: null,
+      },
+    });
+  } catch (err) {
+    console.error("[RecommendationService] Error invalidating user recommendations:", err);
+  }
 }
 
 /**
@@ -52,15 +77,14 @@ function calculateHeuristicRecommendations(
 }
 
 /**
- * Fetch personalized movie recommendations for a given user.
- * Combines user favorite genres & past booked movies, queries Gemini LLM for JSON scoring,
- * and falls back gracefully to heuristic matching if Gemini is unavailable.
+ * Raw computation of recommendations via Gemini LLM or heuristic fallback.
+ * Scores the cinema catalog for a user given their genre interests & booking history.
  */
-export async function getMovieRecommendations(
+async function computeRawRecommendations(
   userId: string,
   candidateMovieIds?: string[]
 ): Promise<MovieRecommendation[]> {
-  // 1. Fetch user genre preferences & past booking history in parallel
+  // 1. Fetch user genre preferences, booking history, and active catalog movies in parallel
   const [userInterests, pastBookings, allMoviesRaw] = await Promise.all([
     prisma.userInterest.findMany({
       where: { userId },
@@ -83,11 +107,11 @@ export async function getMovieRecommendations(
       orderBy: { createdAt: "desc" },
     }),
     prisma.movie.findMany({
-      where: candidateMovieIds ? { id: { in: candidateMovieIds } } : undefined,
       include: {
         genres: { include: { genre: true } },
       },
-      take: candidateMovieIds ? candidateMovieIds.length : 30,
+      take: 50,
+      orderBy: { releaseDate: "desc" },
     }),
   ]);
 
@@ -146,7 +170,6 @@ Strict Instructions:
     const parsed = JSON.parse(responseText);
 
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Validate and sanitize records
       const validRecommendations: MovieRecommendation[] = parsed
         .filter((item) => item && typeof item.movieId === "string")
         .map((item) => ({
@@ -156,7 +179,7 @@ Strict Instructions:
         }));
 
       if (validRecommendations.length > 0) {
-        // Gap-filling: ensure 100% of candidate movies have a score even if LLM omits any
+        // Gap-filling: ensure 100% of candidate movies have a score
         const returnedIds = new Set(validRecommendations.map((r) => r.movieId));
         const missingMovies = candidateMovies.filter((m) => !returnedIds.has(m.id));
         if (missingMovies.length > 0) {
@@ -176,18 +199,107 @@ Strict Instructions:
 }
 
 /**
- * Convenience helper to return recommendations mapped by movieId for O(1) lookups.
+ * Computes recommendations and persists them to the User record in PostgreSQL.
  */
-export async function getMovieRecommendationsMap(
+async function computeAndStoreRecommendations(
   userId: string,
   candidateMovieIds?: string[]
 ): Promise<RecommendationMap> {
-  const recommendations = await getMovieRecommendations(userId, candidateMovieIds);
+  const recommendations = await computeRawRecommendations(userId, candidateMovieIds);
   const map: RecommendationMap = {};
 
   for (const rec of recommendations) {
     map[rec.movieId] = rec;
   }
 
+  // Persist to database so subsequent page loads read from DB (~3ms)
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        recommendations: map as unknown as Prisma.InputJsonObject,
+        recommendationsUpdatedAt: new Date(),
+      },
+    });
+  } catch (err) {
+    console.error("[RecommendationService] Failed to persist recommendations to DB:", err);
+  }
+
   return map;
+}
+
+/**
+ * Fetch personalized movie recommendations map for a user.
+ * 1. Checks PostgreSQL for cached recommendations (fresh within 24h).
+ * 2. If present and fresh -> returns in ~2-5ms (zero LLM overhead).
+ * 3. If stale or missing -> coalesces concurrent in-flight requests and computes via Gemini,
+ *    storing the results to Postgres before returning.
+ */
+export async function getMovieRecommendationsMap(
+  userId: string,
+  candidateMovieIds?: string[]
+): Promise<RecommendationMap> {
+  if (!userId) return {};
+
+  // 1. In-flight coalescing: share promise if another request is already computing for this user
+  const existingPromise = inFlightRequests.get(userId);
+  if (existingPromise) {
+    return existingPromise;
+  }
+
+  // 2. Check Database for cached recommendations
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        recommendations: true,
+        recommendationsUpdatedAt: true,
+      },
+    });
+
+    if (user?.recommendations && user.recommendationsUpdatedAt) {
+      const ageMs = Date.now() - new Date(user.recommendationsUpdatedAt).getTime();
+      if (ageMs < RECOMMENDATION_TTL_MS) {
+        const cachedMap = user.recommendations as unknown as RecommendationMap;
+        if (typeof cachedMap === "object" && cachedMap !== null && Object.keys(cachedMap).length > 0) {
+          // If candidate IDs are specified, ensure at least one matches our cached catalog
+          if (!candidateMovieIds || candidateMovieIds.length === 0 || candidateMovieIds.some((id) => cachedMap[id])) {
+            return cachedMap;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[RecommendationService] Error querying cached recommendations:", err);
+  }
+
+  // 3. Cache miss or stale: compute on demand with in-flight deduplication
+  const computePromise = (async () => {
+    try {
+      return await computeAndStoreRecommendations(userId, candidateMovieIds);
+    } finally {
+      inFlightRequests.delete(userId);
+    }
+  })();
+
+  inFlightRequests.set(userId, computePromise);
+  return computePromise;
+}
+
+/**
+ * Convenience helper returning recommendations as an array for backward compatibility.
+ */
+export async function getMovieRecommendations(
+  userId: string,
+  candidateMovieIds?: string[]
+): Promise<MovieRecommendation[]> {
+  const map = await getMovieRecommendationsMap(userId, candidateMovieIds);
+  const list = Object.values(map);
+
+  if (candidateMovieIds && candidateMovieIds.length > 0) {
+    const set = new Set(candidateMovieIds);
+    return list.filter((r) => set.has(r.movieId));
+  }
+
+  return list;
 }

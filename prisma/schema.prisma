@@ -40,10 +40,12 @@ model User {
   email        String         @unique
   name         String?
   passwordHash String
-  role         Role           @default(CUSTOMER)
-  createdAt    DateTime       @default(now())
-  bookings     Booking[]
-  interests    UserInterest[]
+  role                     Role           @default(CUSTOMER)
+  recommendations          Json?
+  recommendationsUpdatedAt DateTime?
+  createdAt                DateTime       @default(now())
+  bookings                 Booking[]
+  interests                UserInterest[]
 }
 
 model Genre {

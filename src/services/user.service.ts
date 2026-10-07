@@ -2,6 +2,7 @@
 // CineGo -- Reusable User & Genre Preferences Service Layer
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { GenrePreferenceItem } from "@/types";
 
 /**
@@ -67,6 +68,15 @@ export async function updateUserInterests(userId: string, genreIds: string[]) {
         })),
       });
     }
+
+    // 3. Invalidate cached recommendations so next visit generates fresh AI scores
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        recommendations: Prisma.DbNull,
+        recommendationsUpdatedAt: null,
+      },
+    });
 
     return { count: genreIds.length };
   });

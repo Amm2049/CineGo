@@ -47,14 +47,14 @@ Initialize Git repository with `main` & `develop` branches, configure Next.js Ap
 
 ---
 
-## 🗄️ Phase 2: Database Schema, Prisma ORM & Seed Data
+## 🗄️ Phase 2: Database Schema, Prisma ORM & Seed Data (Completed)
 
 ### 🎯 Objective
 Create permanent milestone branch `phase/phase2-database` off `develop`. Define PostgreSQL schema in Prisma ORM, run migrations, enforce unique seat reservation constraints, and seed cinema, screen, seat layout, genre, and movie data using temporary task branches (`feature/*`).
 
 ### 📋 Checklist & Tasks
-* [ ] Create milestone branch `phase/phase2-database` off `develop`.
-* [ ] Branch `feature/prisma-schema` off `phase/phase2-database`:
+* [x] Create milestone branch `phase/phase2-database` off `develop`.
+* [x] Branch `feature/prisma-schema` off `phase/phase2-database`:
   * Install Prisma ORM (`@prisma/client`, `prisma`).
   * Write `prisma/schema.prisma` with core entities:
     * `User`, `Role`, `Genre`, `UserInterest`
@@ -64,49 +64,49 @@ Create permanent milestone branch `phase/phase2-database` off `develop`. Define 
   * Enforce PostgreSQL unique constraint on `BookingSeat`: `@@unique([showtimeId, seatId])`.
   * Execute initial migration: `npx prisma migrate dev --name init`.
   * Merge `feature/prisma-schema` into `phase/phase2-database` and delete feature branch.
-* [ ] Branch `feature/seed-data` off `phase/phase2-database`:
+* [x] Branch `feature/seed-data` off `phase/phase2-database`:
   * Write `prisma/seed.ts` script to populate screens, seat layouts (Rows A–F with row pricing), genres, and sample movies (supporting live TMDB API sync with standard catalog target of 10 Now Showing + 20 Upcoming movies, resilient offline fallback, and a 14-day rolling conflict-free showtime schedule).
   * Run seed script (`npx prisma db seed`).
   * Merge `feature/seed-data` into `phase/phase2-database` and delete feature branch.
-* [ ] Merge `phase/phase2-database` into `develop` and preserve `phase/phase2-database` on GitHub.
+* [x] Merge `phase/phase2-database` into `develop` and preserve `phase/phase2-database` on GitHub.
 
 ### ✅ Verification Checkpoint
 * Inspect database via `npx prisma studio`. Confirm `BookingSeat` unique index exists and `Movie.tmdbId` column is present in PostgreSQL.
 
 ---
 
-## 🔐 Phase 3: Authentication & Role-Based Security
+## 🔐 Phase 3: Authentication & Role-Based Security (Completed)
 
 ### 🎯 Objective
 Create permanent milestone branch `phase/phase3-auth` off `develop`. Implement Auth.js (NextAuth) with password hashing (bcrypt), session management, role protection middleware (`CUSTOMER` vs `ADMIN`), and Auth UI pages using temporary task branches (`feature/*`).
 
 ### 📋 Checklist & Tasks
-* [ ] Create milestone branch `phase/phase3-auth` off `develop`.
-* [ ] Branch `feature/auth-config` off `phase/phase3-auth`:
+* [x] Create milestone branch `phase/phase3-auth` off `develop`.
+* [x] Branch `feature/auth-config` off `phase/phase3-auth`:
   * Install Auth.js (`next-auth`) and `bcryptjs`.
   * Configure Auth.js credentials provider in `src/lib/auth.ts`.
   * Build `/api/auth/register` API endpoint with bcrypt hashing.
   * Merge `feature/auth-config` into `phase/phase3-auth` and delete feature branch.
-* [ ] Branch `feature/auth-ui` off `phase/phase3-auth`:
+* [x] Branch `feature/auth-ui` off `phase/phase3-auth`:
   * Build Login (`/login`) and Register (`/register`) UI pages.
   * Add Next.js middleware for role-based route protection (`/admin/*` restricted to Admin role).
   * Create Navigation Bar header (`Navbar.tsx`) displaying links based on Auth state.
   * Merge `feature/auth-ui` into `phase/phase3-auth` and delete feature branch.
-* [ ] Merge `phase/phase3-auth` into `develop` and preserve `phase/phase3-auth` on GitHub.
+* [x] Merge `phase/phase3-auth` into `develop` and preserve `phase/phase3-auth` on GitHub.
 
 ### ✅ Verification Checkpoint
 * Register a new Customer account and log in. Verify `/admin` access is denied for Customer role and allowed for Admin role.
 
 ---
 
-## 🎬 Phase 4: Movies Catalog, Experiences Page & Profile Settings
+## 🎬 Phase 4: Movies Catalog, Experiences Page & Profile Settings (Completed)
 
 ### 🎯 Objective
 Create permanent milestone branch `phase/phase4-movies` off `develop`. Build the Homepage (`/`), Movies Catalog page (`/movies`), Experiences FYI page (`/experiences`), and Profile Settings page (`/profile`) using temporary task branches (`feature/*`).
 
 ### 📋 Checklist & Tasks
-* [ ] Create milestone branch `phase/phase4-movies` off `develop`.
-* [ ] Branch `feature/homepage-catalog` off `phase/phase4-movies`:
+* [x] Create milestone branch `phase/phase4-movies` off `develop`.
+* [x] Branch `feature/homepage-catalog` off `phase/phase4-movies`:
   * Build Homepage (`/`) as a **Server Component**:
     * Hero Banner (featured blockbuster — first "Now Showing" movie from DB).
     * 5-card **Now Showing** preview: Prisma query `WHERE releaseDate ≤ today AND showtimes.some(startsAt ≥ today)`, with in-line `🔥 AI Match` badges, fully clickable cards + *"View All Movies →"* CTA.
@@ -115,11 +115,11 @@ Create permanent milestone branch `phase/phase4-movies` off `develop`. Build the
   * Build Movies Catalog Page (`/movies`):
     * Clean 2-tab layout: `[ 🍿 Now Showing ]` vs `[ 📅 Upcoming Releases ]` — both tabs fetch from DB using the same derived status queries. No static/hardcoded data.
   * Merge `feature/homepage-catalog` into `phase/phase4-movies` and delete feature branch.
-* [ ] Branch `feature/experiences-profile` off `phase/phase4-movies`:
+* [x] Branch `feature/experiences-profile` off `phase/phase4-movies`:
   * Build Experiences Page (`/experiences`): FYI showcase for IMAX Laser, Dolby Cinema, 4DX Motion, and VIP Lounge.
   * Build Profile Settings Page (`/profile`): Multi-select genre preferences & API endpoint `POST /api/user/interests`.
   * Merge `feature/experiences-profile` into `phase/phase4-movies` and delete feature branch.
-* [ ] Merge `phase/phase4-movies` into `develop` and preserve `phase/phase4-movies` on GitHub.
+* [x] Merge `phase/phase4-movies` into `develop` and preserve `phase/phase4-movies` on GitHub.
 
 ### ✅ Verification Checkpoint
 * Verify navigation across Home, Movies (2-tab catalog), Experiences, and Profile pages.
@@ -128,24 +128,24 @@ Create permanent milestone branch `phase/phase4-movies` off `develop`. Build the
 
 ---
 
-## 🤖 Phase 5: AI Movie Recommendation Engine (Gemini LLM API)
+## 🤖 Phase 5: AI Movie Recommendation Engine (Gemini LLM API) (Completed)
 
 ### 🎯 Objective
 Create permanent milestone branch `phase/phase5-recommendations` off `develop`. Integrate Google Gemini LLM API to generate structured JSON recommendations and render **In-Line AI Match Badges** on movie cards using temporary task branches (`feature/*`).
 
 ### 📋 Checklist & Tasks
-* [ ] Create milestone branch `phase/phase5-recommendations` off `develop`.
-* [ ] Branch `feature/gemini-service` off `phase/phase5-recommendations`:
+* [x] Create milestone branch `phase/phase5-recommendations` off `develop`.
+* [x] Branch `feature/gemini-service` off `phase/phase5-recommendations`:
   * Install `@google/genai` SDK and configure `src/lib/gemini.ts`.
   * Create `src/services/recommendation.service.ts`:
     * Read user interests from `UserInterest` & past bookings from `Booking`.
     * Send structured prompt to Gemini API requesting JSON output (`movieId`, `matchScore`, `reason`).
   * Build `/api/recommendations` GET Route Handler.
   * Merge `feature/gemini-service` into `phase/phase5-recommendations` and delete feature branch.
-* [ ] Branch `feature/recommendation-ui` off `phase/phase5-recommendations`:
+* [x] Branch `feature/recommendation-ui` off `phase/phase5-recommendations`:
   * Update Movie Cards to display **In-Line AI Match Badges** (`🔥 {matchScore}%`) and 1-sentence AI insights.
   * Merge `feature/recommendation-ui` into `phase/phase5-recommendations` and delete feature branch.
-* [ ] Merge `phase/phase5-recommendations` into `develop` and preserve `phase/phase5-recommendations` on GitHub.
+* [x] Merge `phase/phase5-recommendations` into `develop` and preserve `phase/phase5-recommendations` on GitHub.
 
 ### ✅ Verification Checkpoint
 * Test `/api/recommendations` API response. Verify glowing `🔥 AI Match` badges render on movie cards for logged-in users.

@@ -1,5 +1,7 @@
 // src/app/page.tsx
-// CineGo Homepage -- Server Component querying live PostgreSQL database & Gemini AI Recommendations
+// CineGo Homepage -- Server Component querying live PostgreSQL database & AI Recommendations
+// Recommendations are persisted in DB (PostgreSQL JSON) with 24h TTL and in-flight deduplication.
+// Renders instantly with scores attached without visual layout pop-in.
 
 import Link from "next/link";
 import { getServerSession } from "next-auth";
@@ -12,18 +14,18 @@ import MovieCard from "@/components/movies/MovieCard";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const session = await getServerSession(authOptions);
-
-  // Concurrently fetch movies & personalized recommendations if signed in
-  const [nowShowingRaw, upcomingRaw] = await Promise.all([
+  const [session, nowShowingRaw, upcomingRaw] = await Promise.all([
+    getServerSession(authOptions),
     getNowShowingMovies({ limit: 5 }),
     getUpcomingMovies({ limit: 5 }),
   ]);
 
+  const userId = session?.user?.id;
   const allMovieIds = [...nowShowingRaw.map((m) => m.id), ...upcomingRaw.map((m) => m.id)];
 
-  const recommendationMap = session?.user?.id
-    ? await getMovieRecommendationsMap(session.user.id, allMovieIds)
+  // Read recommendations from DB cache (~2-5ms) or compute on-demand if missing
+  const recommendationMap = userId
+    ? await getMovieRecommendationsMap(userId, allMovieIds)
     : {};
 
   // Format Spotlight data for Hero
