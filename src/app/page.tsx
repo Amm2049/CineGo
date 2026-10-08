@@ -97,6 +97,7 @@ export default async function HomePage() {
                     matchScore={rec?.matchScore}
                     matchReason={rec?.reason}
                     priority={idx < 2}
+                    showtimeId={movie.showtimes[0]?.id}
                   />
                 );
               })}

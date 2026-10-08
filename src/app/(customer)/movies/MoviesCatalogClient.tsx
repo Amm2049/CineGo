@@ -101,6 +101,7 @@ export default function MoviesCatalogClient({
                   matchScore={rec?.matchScore}
                   matchReason={rec?.reason}
                   isUpcoming={movie.isUpcoming}
+                  showtimeId={movie.showtimeId}
                 />
               </div>
             );

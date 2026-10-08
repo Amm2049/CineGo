@@ -18,6 +18,7 @@ export default function MovieCard({
   matchReason,
   isUpcoming = false,
   priority = false,
+  showtimeId,
 }: MovieCardProps) {
   const formattedDate = new Date(releaseDate).toLocaleDateString("en-US", {
     month: "short",
@@ -25,9 +26,11 @@ export default function MovieCard({
     year: "numeric",
   });
 
+  const cardHref = !isUpcoming && showtimeId ? `/checkout/${showtimeId}` : `/movies#movie-${id}`;
+
   return (
     <Link
-      href={`/movies#movie-${id}`}
+      href={cardHref}
       prefetch={false}
       className="group relative flex flex-col rounded-2xl bg-[#070820]/80 border border-[#2500f0]/30 hover:border-[#5938ff] transition-all duration-300 overflow-hidden shadow-lg hover:shadow-[#2500f0]/25 hover:-translate-y-1.5 focus:outline-none focus:ring-2 focus:ring-[#5938ff]"
     >

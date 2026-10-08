@@ -78,6 +78,11 @@ export function formatCatalogMovie(
 
   const uniqueFormats = Array.from(new Set(screens));
 
+  const firstShowtime =
+    "showtimes" in movie && Array.isArray(movie.showtimes) && movie.showtimes.length > 0
+      ? (movie.showtimes[0] as { id?: string })?.id
+      : undefined;
+
   return {
     id: movie.id,
     title: movie.title,
@@ -89,6 +94,7 @@ export function formatCatalogMovie(
     genres: movie.genres.map((g) => g.genre.name),
     formats: uniqueFormats.length > 0 ? uniqueFormats : ["Digital 4K"],
     isUpcoming,
+    showtimeId: firstShowtime,
   };
 }
 

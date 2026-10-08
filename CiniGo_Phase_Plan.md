@@ -158,8 +158,8 @@ Create permanent milestone branch `phase/phase5-recommendations` off `develop`. 
 Create permanent milestone branch `phase/phase6-seatmap` off `develop`. Implement the interactive seat selection layout, row-based pricing calculations, 5-minute temporary seat hold, and SWR background polling for live availability using temporary task branches (`feature/*`).
 
 ### 📋 Checklist & Tasks
-* [ ] Create milestone branch `phase/phase6-seatmap` off `develop`.
-* [ ] Branch `feature/seatmap-api` off `phase/phase6-seatmap`:
+* [x] Create milestone branch `phase/phase6-seatmap` off `develop`.
+* [x] Branch `feature/seatmap-api` off `phase/phase6-seatmap`:
   * Build `GET /api/showtimes/[id]/seats` endpoint: returns full seat grid with status per seat:
     * `BOOKED` — `BookingSeat` record exists with a `PAID` booking.
     * `HELD` — `BookingSeat` record exists with `heldUntil > NOW` (active hold by another user).
@@ -169,11 +169,11 @@ Create permanent milestone branch `phase/phase6-seatmap` off `develop`. Implemen
     * `releaseSeat(showtimeId, seatId)` — clears `heldUntil` on cancel or expiry.
     * Expired holds (`heldUntil < NOW`) are treated as available at query time — no background cleanup job needed.
   * Merge `feature/seatmap-api` into `phase/phase6-seatmap` and delete feature branch.
-* [ ] Branch `feature/seatmap-ui` off `phase/phase6-seatmap`:
+* [x] Branch `feature/seatmap-ui` off `phase/phase6-seatmap`:
   * Create `SeatMap.tsx` component with row pricing badges and multi-seat selection state.
   * Integrate **SWR (`useSWR` with 5s polling)** for live availability updates.
   * Merge `feature/seatmap-ui` into `phase/phase6-seatmap` and delete feature branch.
-* [ ] Merge `phase/phase6-seatmap` into `develop` and preserve `phase/phase6-seatmap` on GitHub.
+* [x] Merge `phase/phase6-seatmap` into `develop` and preserve `phase/phase6-seatmap` on GitHub.
 
 ### ✅ Verification Checkpoint
 * Open seat map in two browser tabs; select seats in Tab 1 and verify Tab 2 shows them as `HELD` within 5 seconds via SWR polling.

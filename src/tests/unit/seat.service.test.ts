@@ -27,4 +27,16 @@ describe("Seat Service Tier Calculations", () => {
   it("has a 5-minute hold duration", () => {
     expect(HOLD_DURATION_MS).toBe(5 * 60 * 1000);
   });
+
+  it("rejects seat hold when seatIds is empty", async () => {
+    const { holdShowtimeSeats } = await import("@/services/seat.service");
+    const result = await holdShowtimeSeats({
+      showtimeId: "test-st-1",
+      seatIds: [],
+      userId: "test-user-1",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("No seats selected");
+  });
 });
+
