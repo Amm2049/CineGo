@@ -5,6 +5,7 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import SeatMap from "@/components/seatmap/SeatMap";
 import SeatLegend from "@/components/seatmap/SeatLegend";
@@ -31,7 +32,9 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
   );
   const [heldUntil, setHeldUntil] = useState<string | null>(initialHeldUntil);
   const [isHolding, setIsHolding] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const router = useRouter();
 
   // SWR background polling every 5 seconds
   const { data, mutate } = useSWR<ShowtimeSeatMapResponse>(
@@ -117,6 +120,34 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
     }
   };
 
+  // Simulated payment — server re-validates the hold and prices, then issues the ticket
+  const handlePayment = async () => {
+    setIsPaying(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ showtimeId }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        setErrorMsg(json.error || "Payment failed");
+        setIsPaying(false);
+        await mutate();
+        return;
+      }
+
+      // Keep the button disabled while navigating to the ticket pass
+      router.push(`/tickets/${json.ticketId}`);
+    } catch {
+      setErrorMsg("Network error processing payment");
+      setIsPaying(false);
+    }
+  };
+
   // Release seats when timer expires
   const handleExpire = async () => {
     setHeldUntil(null);
@@ -181,10 +212,37 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
         selectedSeatIds={selectedSeatIds}
         onToggleSeat={handleToggleSeat}
         screenName={showtime.screen.name}
-        isHolding={isHolding}
+        isHolding={isHolding || isPaying}
       />
 
       <SeatLegend pricing={pricing} />
+
+      {/* Order Summary — shown once the selection is locked */}
+      {isSelectionHeld && (
+        <div className="max-w-xl mx-auto w-full p-5 rounded-2xl bg-[#06071d]/80 border border-emerald-500/30 space-y-3">
+          <h2 className="text-xs uppercase font-bold tracking-widest text-emerald-300">
+            Order Summary
+          </h2>
+          <ul className="divide-y divide-white/10 text-sm">
+            {selectedSeats.map((s) => (
+              <li key={s.id} className="flex items-center justify-between py-2">
+                <span className="font-bold text-white">
+                  {s.rowLabel}
+                  {s.seatNum}
+                  <span className="ml-2 text-[10px] uppercase tracking-wider text-zinc-400">
+                    {s.tier}
+                  </span>
+                </span>
+                <span className="text-zinc-200">฿{s.price.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center justify-between pt-2 border-t border-white/20">
+            <span className="text-xs text-zinc-400">Total (confirmed by server at payment)</span>
+            <span className="text-lg font-black text-white">฿{totalPrice.toLocaleString()}</span>
+          </div>
+        </div>
+      )}
 
       {/* Floating Action / Checkout Bar */}
       <div className="sticky bottom-6 z-40 p-4 sm:p-6 rounded-2xl bg-[#06071d]/95 border border-[#2500f0]/50 backdrop-blur-xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -217,10 +275,11 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
           ) : (
             <button
               type="button"
-              className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/50 transition-all cursor-pointer"
-              onClick={() => alert("Proceeding to Phase 7 Checkout & Payment!")}
+              disabled={isPaying}
+              className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/50 transition-all cursor-pointer disabled:cursor-not-allowed"
+              onClick={handlePayment}
             >
-              Proceed to Payment →
+              {isPaying ? "Processing Payment..." : `Pay ฿${totalPrice.toLocaleString()} (Simulated) →`}
             </button>
           )}
         </div>

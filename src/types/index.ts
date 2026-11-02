@@ -130,3 +130,43 @@ export interface ReleaseSeatsRequest {
   bookingId?: string;
 }
 
+
+// ── Phase 7: Checkout, Payment & Digital Ticket Types ────────
+
+export interface PaymentRequest {
+  showtimeId: string;
+}
+
+export interface PaymentResponse {
+  success: boolean;
+  bookingId: string;
+  ticketId: string;
+  amount: number;
+}
+
+export interface TicketPass {
+  id: string;
+  ticketCode: string;
+  qrPayload: string;
+  status: "ACTIVE" | "USED";
+  issuedAt: string;
+  bookingReference: string;
+  totalAmount: number;
+  showtime: {
+    startsAt: string;
+    endsAt: string;
+    screenName: string;
+    cinemaName: string;
+  };
+  movie: {
+    id: string;
+    title: string;
+    posterUrl: string;
+    duration: number;
+  };
+  seats: {
+    label: string;
+    tier: SeatTier;
+    price: number;
+  }[];
+}
