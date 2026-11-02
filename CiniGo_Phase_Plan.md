@@ -181,7 +181,7 @@ Create permanent milestone branch `phase/phase6-seatmap` off `develop`. Implemen
 
 ---
 
-## 🎟️ Phase 7: Checkout, Concurrency Transaction & Digital QR Ticket
+## 🎟️ Phase 7: Checkout, Concurrency Transaction & Digital QR Ticket (Completed)
 
 ### 🎯 Objective
 Create permanent milestone branch `phase/phase7-checkout-ticket` off `develop`. Implement checkout with server-side price validation, atomic PostgreSQL transaction payment processing, and digital ticket pass generation with QR code using temporary task branches (`feature/*`).
@@ -202,7 +202,7 @@ Create permanent milestone branch `phase/phase7-checkout-ticket` off `develop`. 
     * Display screen number, seat labels, showtime, and booking reference code.
   * Build My Tickets History Page (`/tickets`).
   * Merge `feature/digital-ticket` into `phase/phase7-checkout-ticket` and delete feature branch.
-* [ ] Merge `phase/phase7-checkout-ticket` into `develop` and preserve `phase/phase7-checkout-ticket` on GitHub.
+* [x] Merge `phase/phase7-checkout-ticket` into `develop` and preserve `phase/phase7-checkout-ticket` on GitHub.
 
 ### ✅ Verification Checkpoint
 * Complete a simulated checkout and verify digital pass renders with scannable QR code.
