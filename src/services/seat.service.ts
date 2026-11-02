@@ -1,6 +1,7 @@
 // src/services/seat.service.ts
 // CineGo — Domain service for Seat availability, 5-minute atomic holds, and layout mapping
 
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { SeatLayoutItem, SeatTier, ShowtimeSeatMapResponse } from "@/types";
 
@@ -176,9 +177,18 @@ export async function holdShowtimeSeats(params: {
 
   try {
     return await prisma.$transaction(async (tx) => {
-      // 1. Fetch requested seats to calculate total
+      const showtime = await tx.showtime.findUnique({
+        where: { id: showtimeId },
+        select: { screenId: true },
+      });
+
+      if (!showtime) {
+        return { success: false, error: "Showtime not found" };
+      }
+
+      // 1. Fetch requested seats to calculate total (only seats in this showtime's screen)
       const seats = await tx.seat.findMany({
-        where: { id: { in: seatIds } },
+        where: { id: { in: seatIds }, screenId: showtime.screenId },
       });
 
       if (seats.length !== seatIds.length) {
@@ -286,6 +296,11 @@ export async function holdShowtimeSeats(params: {
         bookingId: booking.id,
         heldUntil,
       };
+    }, {
+      // RepeatableRead makes a concurrent hold on the same BookingSeat row fail with a
+      // serialization error instead of silently overwriting the other customer's hold.
+      // Concurrent inserts of a new row are already rejected by @@unique([showtimeId, seatId]).
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
     });
   } catch (error) {
     console.error("[SeatService] holdShowtimeSeats error:", error);

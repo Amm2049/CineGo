@@ -25,6 +25,10 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>(() =>
     myHeldSeats.map((s) => s.id)
   );
+  // Seats actually held on the server (may differ from selection until re-locked)
+  const [heldSeatIds, setHeldSeatIds] = useState<string[]>(() =>
+    myHeldSeats.map((s) => s.id)
+  );
   const [heldUntil, setHeldUntil] = useState<string | null>(initialHeldUntil);
   const [isHolding, setIsHolding] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -45,14 +49,44 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
 
   const selectedSeats = seats.filter((s) => selectedSeatIds.includes(s.id));
   const totalPrice = selectedSeats.reduce((sum, s) => sum + s.price, 0);
+  const isSelectionHeld =
+    heldUntil !== null &&
+    selectedSeatIds.length > 0 &&
+    selectedSeatIds.every((id) => heldSeatIds.includes(id));
+
+  // Release a single held seat on the server when the customer deselects it
+  const releaseHeldSeat = useCallback(
+    async (seatId: string) => {
+      const remaining = heldSeatIds.filter((id) => id !== seatId);
+      setHeldSeatIds(remaining);
+      if (remaining.length === 0) setHeldUntil(null);
+      try {
+        await fetch(`/api/showtimes/${showtimeId}/seats/release`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ seatIds: [seatId] }),
+        });
+      } finally {
+        await mutate();
+      }
+    },
+    [showtimeId, heldSeatIds, mutate]
+  );
 
   // Toggle seat selection
-  const handleToggleSeat = useCallback((seat: SeatLayoutItem) => {
-    setErrorMsg(null);
-    setSelectedSeatIds((prev) =>
-      prev.includes(seat.id) ? prev.filter((id) => id !== seat.id) : [...prev, seat.id]
-    );
-  }, []);
+  const handleToggleSeat = useCallback(
+    (seat: SeatLayoutItem) => {
+      setErrorMsg(null);
+      const isDeselecting = selectedSeatIds.includes(seat.id);
+      setSelectedSeatIds((prev) =>
+        isDeselecting ? prev.filter((id) => id !== seat.id) : [...prev, seat.id]
+      );
+      if (isDeselecting && heldSeatIds.includes(seat.id)) {
+        void releaseHeldSeat(seat.id);
+      }
+    },
+    [selectedSeatIds, heldSeatIds, releaseHeldSeat]
+  );
 
   // Hold seats (Lock selection for 5 minutes)
   const handleHoldSeats = async () => {
@@ -73,6 +107,7 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
         await mutate(); // Refresh seat states
       } else {
         setHeldUntil(json.heldUntil);
+        setHeldSeatIds(json.heldSeatIds ?? selectedSeatIds);
         await mutate();
       }
     } catch {
@@ -85,12 +120,14 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
   // Release seats when timer expires
   const handleExpire = async () => {
     setHeldUntil(null);
+    setHeldSeatIds([]);
     setSelectedSeatIds([]);
     setErrorMsg("Your 5-minute seat reservation has expired. Please select again.");
+    // No seatIds → releases every seat in this user's pending booking
     await fetch(`/api/showtimes/${showtimeId}/seats/release`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ seatIds: selectedSeatIds }),
+      body: JSON.stringify({}),
     });
     await mutate();
   };
@@ -164,14 +201,18 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
         </div>
 
         <div className="flex items-center gap-3">
-          {!heldUntil ? (
+          {!isSelectionHeld ? (
             <button
               type="button"
               disabled={selectedSeats.length === 0 || isHolding}
               onClick={handleHoldSeats}
               className="px-6 py-3 rounded-xl bg-[#2500f0] hover:bg-[#3411ff] disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#2500f0]/50 transition-all cursor-pointer disabled:cursor-not-allowed"
             >
-              {isHolding ? "Holding Seats..." : "Lock Seats & Proceed (5 min)"}
+              {isHolding
+                ? "Holding Seats..."
+                : heldUntil
+                  ? "Update Locked Seats (5 min)"
+                  : "Lock Seats & Proceed (5 min)"}
             </button>
           ) : (
             <button

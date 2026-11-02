@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface SeatHoldTimerProps {
   heldUntil: string | null;
@@ -13,30 +13,36 @@ interface SeatHoldTimerProps {
 export default function SeatHoldTimer({ heldUntil, onExpire }: SeatHoldTimerProps) {
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
 
+  // Keep the latest callback in a ref so parent re-renders don't restart the countdown
+  const onExpireRef = useRef(onExpire);
   useEffect(() => {
-    if (!heldUntil) {
-      setSecondsRemaining(null);
-      return;
-    }
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
+  useEffect(() => {
+    if (!heldUntil) return;
 
     const target = new Date(heldUntil).getTime();
+    let expired = false;
 
     const update = () => {
       const now = Date.now();
       const diff = Math.max(0, Math.floor((target - now) / 1000));
       setSecondsRemaining(diff);
 
-      if (diff <= 0) {
-        onExpire();
+      if (diff <= 0 && !expired) {
+        expired = true;
+        clearInterval(interval);
+        onExpireRef.current();
       }
     };
 
-    update();
     const interval = setInterval(update, 1000);
+    update();
     return () => clearInterval(interval);
-  }, [heldUntil, onExpire]);
+  }, [heldUntil]);
 
-  if (secondsRemaining === null || secondsRemaining <= 0) {
+  if (!heldUntil || secondsRemaining === null || secondsRemaining <= 0) {
     return null;
   }
 
