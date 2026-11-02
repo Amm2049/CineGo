@@ -1,0 +1,27 @@
+// src/tests/unit/ticket.service.test.ts
+import { describe, it, expect } from "vitest";
+import {
+  buildQrPayload,
+  getBookingReference,
+  parseQrPayload,
+  QR_PAYLOAD_PREFIX,
+} from "@/services/ticket.service";
+
+describe("Ticket Service Helpers", () => {
+  it("builds a short uppercase booking reference from the booking id", () => {
+    expect(getBookingReference("1a2b3c4d-5e6f-7a8b-9c0d-112233445566")).toBe("CG-1A2B3C4D");
+  });
+
+  it("prefixes QR payloads so the scanner can recognise CineGo tickets", () => {
+    expect(buildQrPayload("abc-123")).toBe(`${QR_PAYLOAD_PREFIX}abc-123`);
+  });
+
+  it("round-trips a ticket code through the QR payload", () => {
+    const code = "6f1c2d3e-4a5b-6c7d-8e9f-0a1b2c3d4e5f";
+    expect(parseQrPayload(buildQrPayload(code))).toBe(code);
+  });
+
+  it("accepts a manually typed ticket code without the prefix", () => {
+    expect(parseQrPayload("  abc-123  ")).toBe("abc-123");
+  });
+});

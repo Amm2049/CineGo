@@ -152,7 +152,7 @@ Create permanent milestone branch `phase/phase5-recommendations` off `develop`. 
 
 ---
 
-## 💺 Phase 6: Interactive Seat Map, Dynamic Pricing & SWR Polling
+## 💺 Phase 6: Interactive Seat Map, Dynamic Pricing & SWR Polling (Completed)
 
 ### 🎯 Objective
 Create permanent milestone branch `phase/phase6-seatmap` off `develop`. Implement the interactive seat selection layout, row-based pricing calculations, 5-minute temporary seat hold, and SWR background polling for live availability using temporary task branches (`feature/*`).
@@ -187,8 +187,8 @@ Create permanent milestone branch `phase/phase6-seatmap` off `develop`. Implemen
 Create permanent milestone branch `phase/phase7-checkout-ticket` off `develop`. Implement checkout with server-side price validation, atomic PostgreSQL transaction payment processing, and digital ticket pass generation with QR code using temporary task branches (`feature/*`).
 
 ### 📋 Checklist & Tasks
-* [ ] Create milestone branch `phase/phase7-checkout-ticket` off `develop`.
-* [ ] Branch `feature/checkout-flow` off `phase/phase7-checkout-ticket`:
+* [x] Create milestone branch `phase/phase7-checkout-ticket` off `develop`.
+* [x] Branch `feature/checkout-flow` off `phase/phase7-checkout-ticket`:
   * Create Checkout Page (`/checkout/[showtimeId]`):
     * Seat breakdown, row prices, and total calculation (revalidated server-side).
     * Simulated payment button.
@@ -196,7 +196,7 @@ Create permanent milestone branch `phase/phase7-checkout-ticket` off `develop`. 
     * Catch PostgreSQL unique constraint (`@@unique([showtimeId, seatId])`) to prevent double-booking.
     * Update booking status to `PAID` atomically.
   * Merge `feature/checkout-flow` into `phase/phase7-checkout-ticket` and delete feature branch.
-* [ ] Branch `feature/digital-ticket` off `phase/phase7-checkout-ticket`:
+* [x] Branch `feature/digital-ticket` off `phase/phase7-checkout-ticket`:
   * Build Digital Ticket Pass Page (`/tickets/[id]`):
     * Install `qrcode.react` and render scannable QR code pass.
     * Display screen number, seat labels, showtime, and booking reference code.

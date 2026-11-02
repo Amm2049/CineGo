@@ -119,14 +119,21 @@ export async function getTicketPassForUser(
 }
 
 /**
- * Fetch all of a user's tickets, newest showtime first.
+ * Fetch all of a user's tickets split into upcoming (soonest first) and past (most recent first).
  */
-export async function listUserTicketPasses(userId: string): Promise<TicketPass[]> {
+export async function listUserTicketPasses(
+  userId: string
+): Promise<{ upcoming: TicketPass[]; past: TicketPass[] }> {
   const tickets = await prisma.ticket.findMany({
     where: { booking: { userId } },
     include: ticketPassInclude,
     orderBy: { booking: { showtime: { startsAt: "desc" } } },
   });
 
-  return tickets.map(toTicketPass);
+  const now = new Date();
+  const passes = tickets.map(toTicketPass);
+  return {
+    upcoming: passes.filter((t) => new Date(t.showtime.endsAt) > now).reverse(),
+    past: passes.filter((t) => new Date(t.showtime.endsAt) <= now),
+  };
 }

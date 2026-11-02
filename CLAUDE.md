@@ -15,3 +15,9 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 - Deselecting a held seat releases it on the server; newly added seats must be re-locked before "Proceed to Payment". Expiry releases all of the user's held seats.
 - `SeatHoldTimer` keeps `onExpire` in a ref — don't put callbacks in its effect deps.
 - The legacy `holdSeat()` helper upserts without any conflict check and is unused. In Phase 7, use `holdShowtimeSeats()` (or add a conflict check) rather than `holdSeat()`.
+
+## Checkout & tickets (Phase 7)
+- `confirmBookingPayment()` in `src/services/booking.service.ts` is the only path to `PAID`: it requires an active hold, re-prices from `Seat`, and writes Booking/Payment/Ticket in one `RepeatableRead` transaction.
+- Ticket QR payload is `CINEGO:<ticketCode>` (UUID). Use `parseQrPayload()` from `ticket.service.ts` in the Phase 8 scanner — it also accepts a bare code typed manually.
+- `npm run test:concurrency` races holds/payments against the real DB (needs a future showtime; cleans up its own test users).
+- Seed creates `admin@cinego.com` / `admin123`. Re-running the seed wipes ALL data, including users.
