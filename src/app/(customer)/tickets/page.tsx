@@ -13,38 +13,53 @@ export const dynamic = "force-dynamic";
 
 function TicketRow({ ticket, isPast }: { ticket: TicketPass; isPast: boolean }) {
   const startsAt = new Date(ticket.showtime.startsAt);
-  const statusLabel = ticket.status === "USED" ? "Used" : isPast ? "Expired" : "Active";
+  const statusLabel = ticket.status === "USED" ? "Used" : isPast ? "Ended" : "Upcoming";
 
   return (
     <Link
       href={`/tickets/${ticket.id}`}
-      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:border-[#5938ff]/70 ${
-        isPast ? "border-white/10 bg-white/[0.02] opacity-60" : "border-[#2500f0]/40 bg-[#06071d]"
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:border-[#5938ff]/70 focus-visible:outline-2 focus-visible:outline-[#5938ff] ${
+        isPast ? "border-white/10 bg-white/[0.02]" : "border-[#2500f0]/40 bg-[#06071d]"
       }`}
     >
-      <div className="relative w-12 h-18 shrink-0 rounded-lg overflow-hidden border border-white/20">
-        <Image src={ticket.movie.posterUrl} alt={ticket.movie.title} fill className="object-cover" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="font-bold truncate">{ticket.movie.title}</h3>
-        <p className="text-xs text-zinc-400 mt-0.5">
-          {startsAt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}{" "}
-          • {startsAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} •{" "}
-          {ticket.showtime.screenName}
-        </p>
-        <p className="text-xs text-[#a5b4fc] mt-0.5">
-          Seats {ticket.seats.map((s) => s.label).join(", ")} • {ticket.bookingReference}
-        </p>
-      </div>
-      <span
-        className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-          statusLabel === "Active"
-            ? "bg-emerald-950/60 border border-emerald-500/50 text-emerald-300"
-            : "bg-zinc-800 text-zinc-400"
+      {/* Date block — the first thing people scan for in a ticket list */}
+      <div
+        className={`w-14 shrink-0 py-2 rounded-xl text-center ${
+          isPast ? "bg-white/5 text-zinc-400" : "bg-[#2500f0]/25 text-white"
         }`}
       >
-        {statusLabel}
-      </span>
+        <div className="text-[11px] uppercase font-bold tracking-wider">
+          {startsAt.toLocaleDateString("en-US", { month: "short" })}
+        </div>
+        <div className="text-2xl font-black leading-none mt-0.5">{startsAt.getDate()}</div>
+      </div>
+      <div className="relative w-10 h-15 shrink-0 rounded-md overflow-hidden border border-white/20 hidden sm:block">
+        <Image src={ticket.movie.posterUrl} alt="" fill sizes="40px" className="object-cover" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className={`font-bold truncate ${isPast ? "text-zinc-300" : "text-white"}`}>
+          {ticket.movie.title}
+        </h3>
+        <p className="text-sm text-zinc-300 mt-0.5">
+          {startsAt.toLocaleDateString("en-US", { weekday: "short" })} ·{" "}
+          {startsAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} ·{" "}
+          {ticket.showtime.screenName}
+        </p>
+        <p className="text-sm text-zinc-400 mt-0.5 truncate">
+          Seat{ticket.seats.length > 1 ? "s" : ""} {ticket.seats.map((s) => s.label).join(", ")}
+          <span className="font-mono"> · {ticket.bookingReference}</span>
+        </p>
+      </div>
+      {/* Upcoming is already the section heading, so only flag Used / Ended */}
+      {statusLabel !== "Upcoming" ? (
+        <span className="shrink-0 px-2.5 py-1 rounded-full text-xs font-bold bg-zinc-800 text-zinc-300">
+          {statusLabel}
+        </span>
+      ) : (
+        <span className="shrink-0 text-xl text-zinc-500" aria-hidden>
+          ›
+        </span>
+      )}
     </Link>
   );
 }
@@ -76,7 +91,7 @@ export default async function MyTicketsPage() {
         ) : (
           <>
             <section className="space-y-3">
-              <h2 className="text-xs uppercase font-bold tracking-widest text-[#a5b4fc]">
+              <h2 className="text-sm font-bold text-[#c7d2fe]">
                 Upcoming ({upcoming.length})
               </h2>
               {upcoming.length === 0 ? (
@@ -88,7 +103,7 @@ export default async function MyTicketsPage() {
 
             {past.length > 0 && (
               <section className="space-y-3">
-                <h2 className="text-xs uppercase font-bold tracking-widest text-zinc-500">
+                <h2 className="text-sm font-bold text-zinc-400">
                   Past ({past.length})
                 </h2>
                 {past.map((t) => (

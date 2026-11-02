@@ -23,6 +23,9 @@ export default function SeatItem({ seat, isSelected, onToggle, disabled }: SeatI
   } else if (isHeldByOther) {
     bgClass = "bg-amber-950/40 border-amber-500/40 text-amber-500/60 cursor-not-allowed animate-pulse";
     title = `Row ${seat.rowLabel}, Seat ${seat.seatNum} — Held by another customer`;
+  } else if (isSelected && seat.isHeldByMe) {
+    bgClass = "bg-emerald-600 border-emerald-300 text-white shadow-[0_0_14px_rgba(16,185,129,0.6)]";
+    title = `Row ${seat.rowLabel}, Seat ${seat.seatNum} — Locked for you (฿${seat.price})`;
   } else if (isSelected) {
     bgClass = "bg-[#2500f0] border-white text-white shadow-[0_0_16px_rgba(37,0,240,0.9)] scale-110 z-10";
     title = `Row ${seat.rowLabel}, Seat ${seat.seatNum} — Selected (฿${seat.price})`;
@@ -39,7 +42,9 @@ export default function SeatItem({ seat, isSelected, onToggle, disabled }: SeatI
       disabled={!isClickable}
       onClick={() => onToggle(seat)}
       title={title}
-      className={`relative w-8 h-8 sm:w-9 sm:h-9 rounded-t-xl rounded-b-md border text-[11px] font-bold flex items-center justify-center transition-all duration-200 ${bgClass}`}
+      aria-label={title}
+      aria-pressed={isSelected}
+      className={`relative w-7 h-7 sm:w-9 sm:h-9 rounded-t-xl rounded-b-md border text-[11px] font-bold flex items-center justify-center transition-all duration-200 ${bgClass}`}
     >
       <span>{seat.seatNum}</span>
     </button>
