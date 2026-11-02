@@ -30,7 +30,6 @@ export interface MovieCardProps {
   genres: string[];
   formats?: string[];
   matchScore?: number;
-  matchReason?: string;
   isUpcoming?: boolean;
   priority?: boolean;
   showtimeId?: string;
@@ -65,7 +64,6 @@ export interface MovieItem {
   formats: string[];
   isUpcoming: boolean;
   matchScore?: number;
-  matchReason?: string;
   showtimeId?: string;
 }
 

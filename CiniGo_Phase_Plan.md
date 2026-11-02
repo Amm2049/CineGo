@@ -143,7 +143,7 @@ Create permanent milestone branch `phase/phase5-recommendations` off `develop`. 
   * Build `/api/recommendations` GET Route Handler.
   * Merge `feature/gemini-service` into `phase/phase5-recommendations` and delete feature branch.
 * [x] Branch `feature/recommendation-ui` off `phase/phase5-recommendations`:
-  * Update Movie Cards to display **In-Line AI Match Badges** (`🔥 {matchScore}%`) and 1-sentence AI insights.
+  * Update Movie Cards to display **In-Line AI Match Badges** (`🔥 {matchScore}%`). The 1-sentence AI insight is still generated and returned by `/api/recommendations`, but is intentionally not shown on cards to keep them uncluttered.
   * Merge `feature/recommendation-ui` into `phase/phase5-recommendations` and delete feature branch.
 * [x] Merge `phase/phase5-recommendations` into `develop` and preserve `phase/phase5-recommendations` on GitHub.
 

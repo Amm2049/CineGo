@@ -95,7 +95,6 @@ export default async function HomePage() {
                     genres={movie.genres.map((g) => g.genre.name)}
                     formats={uniqueFormats.length > 0 ? uniqueFormats : ["Digital 4K"]}
                     matchScore={rec?.matchScore}
-                    matchReason={rec?.reason}
                     priority={idx < 2}
                     showtimeId={movie.showtimes[0]?.id}
                   />
@@ -145,7 +144,6 @@ export default async function HomePage() {
                     releaseDate={movie.releaseDate}
                     genres={movie.genres.map((g) => g.genre.name)}
                     matchScore={rec?.matchScore}
-                    matchReason={rec?.reason}
                     isUpcoming={true}
                   />
                 );

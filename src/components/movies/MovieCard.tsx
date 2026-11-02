@@ -1,6 +1,5 @@
 // src/components/movies/MovieCard.tsx
 // Minimal movie card: poster + AI match badge, title, and one meta line.
-// The 1-sentence AI insight is revealed over the poster on hover/focus to keep the card uncluttered.
 "use client";
 
 import Link from "next/link";
@@ -16,7 +15,6 @@ export default function MovieCard({
   releaseDate,
   genres,
   matchScore,
-  matchReason,
   isUpcoming = false,
   priority = false,
   showtimeId,
@@ -36,7 +34,7 @@ export default function MovieCard({
     <Link
       href={cardHref}
       prefetch={false}
-      aria-label={[title, metaLine, hasMatch ? `${matchScore}% AI match. ${matchReason ?? ""}` : ""]
+      aria-label={[title, metaLine, hasMatch ? `${matchScore}% AI match` : ""]
         .filter(Boolean)
         .join(". ")}
       className="group flex flex-col gap-3 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5938ff] focus-visible:ring-offset-4 focus-visible:ring-offset-[#03030d]"
@@ -57,16 +55,6 @@ export default function MovieCard({
           <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold text-white bg-[#2500f0]/90 backdrop-blur-sm">
             🔥 {matchScore}%
           </span>
-        )}
-
-        {/* AI insight — revealed on hover / keyboard focus */}
-        {matchReason && (
-          <div
-            aria-hidden
-            className="absolute inset-x-0 bottom-0 p-3 pt-10 bg-gradient-to-t from-black/95 via-black/80 to-transparent text-xs leading-snug text-zinc-100 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0 transition-all duration-300"
-          >
-            {matchReason}
-          </div>
         )}
       </div>
 

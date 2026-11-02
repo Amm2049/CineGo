@@ -99,7 +99,6 @@ export default function MoviesCatalogClient({
                   genres={movie.genres}
                   formats={movie.formats}
                   matchScore={rec?.matchScore}
-                  matchReason={rec?.reason}
                   isUpcoming={movie.isUpcoming}
                   showtimeId={movie.showtimeId}
                 />

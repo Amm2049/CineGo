@@ -80,7 +80,7 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 | **UI & Styling** | Tailwind CSS + shadcn/ui | **Dark Mode Cinema Aesthetic** by default (Dark background, neon/accent highlights). |
 | **Data Fetching** | Server Components + **SWR** | **Server Components** for main page loads; **SWR (`useSWR` with 5s polling)** for background seat map auto-refresh. |
 | **Database & ORM** | PostgreSQL + Prisma ORM | Relational integrity, migrations, and atomic `$transaction` queries. |
-| **AI Recommendation** | Google Gemini LLM API (`@google/genai`) | Structured JSON generation for movie match scores (%) and 1-sentence AI explanations rendered as **In-Line Badges**. |
+| **AI Recommendation** | Google Gemini LLM API (`@google/genai`) | Structured JSON generation for movie match scores (%), rendered as **In-Line Badges**, plus a 1-sentence explanation returned by the API (not shown on cards). |
 | **Authentication** | Auth.js (NextAuth) + bcrypt | Hashed credentials & role-based route protection (`CUSTOMER`, `ADMIN`). |
 | **QR Code System** | `qrcode.react` + `html5-qrcode` | `qrcode.react` renders ticket QR codes; `html5-qrcode` powers the WebCam Scanner. |
 | **Movie Data & Ingestion** | TMDB REST API + Vercel Cron | Hybrid ingestion architecture: Automated weekly synchronization via **Vercel Cron Job** (`/api/cron/sync-movies` secured with `CRON_SECRET`) + Admin 1-Click "⚡ Sync Latest Releases" bulk trigger + Admin manual search & import (`POST /api/admin/movies/sync`). Standard catalog target: **10 Now Showing** and **20 Upcoming** releases. Safe idempotent upsert via `tmdbId`. `prisma/seed.ts` supports live TMDB sync with a 14-day rolling window. `next.config.ts` whitelists `image.tmdb.org`. |
@@ -309,7 +309,7 @@ enum TicketStatus {
 3. **Clean Code & GitFlow:** Modular directory structure following SE best practices with disciplined 4-tier `main` $\rightarrow$ `develop` $\rightarrow$ `phase/*` (permanent) $\rightarrow$ `feature/*` (temporary) Git branching.
 4. **TMDB Movie Ingestion & Automated Cron Sync:** Automated weekly Vercel Cron Job (`/api/cron/sync-movies`), Admin 1-Click bulk sync button, and manual TMDB search-and-import flow with target catalog of 10 Now Showing and 20 Upcoming movies; `Movie.tmdbId` prevents duplicates via idempotent upsert.
 5. **Derived Movie Status:** "Now Showing" and "Upcoming" sections on homepage and catalog page driven by live Prisma queries — no stored status flags.
-6. **AI Recommendation Badges:** Gemini LLM API integration rendering in-line AI match badges and 1-sentence insights.
+6. **AI Recommendation Badges:** Gemini LLM API integration rendering in-line AI match badges (1-sentence insights generated but not displayed on cards).
 7. **Seat Concurrency Protection:** PostgreSQL `heldUntil` seat hold (5-minute TTL) + transaction and unique constraint protection against double-booking.
 8. **Digital QR Ticket & WebCam Scanner:** Working digital ticket with rendered QR code and an Admin Camera WebCam ticket scanner.
 9. **Testing Suite:** Automated unit/integration tests with Vitest and E2E concurrency tests with Playwright.
