@@ -43,7 +43,7 @@ function TicketRow({ ticket, isPast }: { ticket: TicketPass; isPast: boolean }) 
         <p className="text-sm text-zinc-300 mt-0.5">
           {startsAt.toLocaleDateString("en-US", { weekday: "short" })} ·{" "}
           {startsAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} ·{" "}
-          {ticket.showtime.screenName}
+          {ticket.showtime.screenName} · {ticket.showtime.screenFormat}
         </p>
         <p className="text-sm text-zinc-400 mt-0.5 truncate">
           Seat{ticket.seats.length > 1 ? "s" : ""} {ticket.seats.map((s) => s.label).join(", ")}

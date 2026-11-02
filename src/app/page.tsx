@@ -30,7 +30,7 @@ export default async function HomePage() {
 
   // Format Spotlight data for Hero
   const spotlightMovies = nowShowingRaw.map((m) => {
-    const screens = m.showtimes.map((s) => s.screen.name);
+    const screens = m.showtimes.map((s) => s.screen.format);
     const uniqueFormats = Array.from(new Set(screens));
     return {
       id: m.id,
@@ -80,8 +80,8 @@ export default async function HomePage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
               {nowShowingRaw.map((movie, idx) => {
-                const screenNames = movie.showtimes.map((s) => s.screen.name);
-                const uniqueFormats = Array.from(new Set(screenNames));
+                const screenFormats = movie.showtimes.map((s) => s.screen.format);
+                const uniqueFormats = Array.from(new Set(screenFormats));
                 const rec = recommendationMap[movie.id];
 
                 return (

@@ -88,8 +88,11 @@ export default async function TicketPassPage({
           {/* Key details: what staff and the customer actually look for */}
           <dl className="grid grid-cols-3 gap-3 px-6 pb-6 text-center">
             <div className="p-3 rounded-xl bg-white/[0.04]">
-              <dt className="text-[11px] uppercase tracking-wider text-zinc-400">Screen</dt>
-              <dd className="font-bold mt-0.5 text-sm">{ticket.showtime.screenName}</dd>
+              <dt className="text-[11px] uppercase tracking-wider text-zinc-400">Theatre</dt>
+              <dd className="mt-0.5">
+                <span className="block font-bold text-sm">{ticket.showtime.screenNumber}</span>
+                <span className="block text-[11px] text-zinc-400">{ticket.showtime.screenFormat}</span>
+              </dd>
             </div>
             <div className="col-span-2 p-3 rounded-xl bg-white/[0.04]">
               <dt className="text-[11px] uppercase tracking-wider text-zinc-400">

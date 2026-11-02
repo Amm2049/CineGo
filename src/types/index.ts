@@ -100,6 +100,7 @@ export interface ShowtimeSeatMapResponse {
     screen: {
       id: string;
       name: string;
+      format: string;
       cinemaName: string;
     };
   };
@@ -156,6 +157,8 @@ export interface TicketPass {
     startsAt: string;
     endsAt: string;
     screenName: string;
+    screenNumber: number;
+    screenFormat: string;
     cinemaName: string;
   };
   movie: {

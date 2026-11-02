@@ -71,9 +71,9 @@ export function formatCatalogMovie(
 ): MovieItem {
   const screens =
     "showtimes" in movie && Array.isArray(movie.showtimes)
-      ? (movie.showtimes as Array<{ screen?: { name?: string } | null }>)
-          .map((s) => s.screen?.name)
-          .filter((name): name is string => Boolean(name))
+      ? (movie.showtimes as Array<{ screen?: { format?: string } | null }>)
+          .map((s) => s.screen?.format)
+          .filter((format): format is string => Boolean(format))
       : [];
 
   const uniqueFormats = Array.from(new Set(screens));

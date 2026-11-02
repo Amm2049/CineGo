@@ -21,3 +21,6 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 - Ticket QR payload is `CINEGO:<ticketCode>` (UUID). Use `parseQrPayload()` from `ticket.service.ts` in the Phase 8 scanner — it also accepts a bare code typed manually.
 - `npm run test:concurrency` races holds/payments against the real DB (needs a future showtime; cleans up its own test users).
 - Seed creates `admin@cinego.com` / `admin123`. Re-running the seed wipes ALL data, including users.
+
+## Screens / theatres
+- `Screen.name` is the theatre ("Theatre 1"), `Screen.number` its number (unique per cinema), `Screen.format` the projection format ("IMAX Laser"). Format badges on movie cards read `screen.format`, never `screen.name`.

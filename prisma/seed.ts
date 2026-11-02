@@ -55,17 +55,21 @@ async function main() {
   console.log(`🏛️  Created cinema: ${cinema.name}`);
 
   // ── 2. Screens ──────────────────────────────────────────────
-  const screenNames = ['IMAX Laser', 'Dolby Cinema', '4DX Motion', 'Standard'];
+  // Numbered theatres, each with its own projection format
+  const screenFormats = ['IMAX Laser', 'Dolby Cinema', '4DX Motion', 'Standard'];
   const screens = [];
-  for (const name of screenNames) {
+  for (const [index, format] of screenFormats.entries()) {
+    const number = index + 1;
     const screen = await prisma.screen.create({
       data: {
         cinemaId: cinema.id,
-        name,
+        number,
+        name: `Theatre ${number}`,
+        format,
       },
     });
     screens.push(screen);
-    console.log(`🖥️  Created screen: ${name}`);
+    console.log(`🖥️  Created screen: ${screen.name} (${format})`);
   }
 
   // ── 3. Seats (Rows A–F, 10 seats/row, row-based pricing) ─────

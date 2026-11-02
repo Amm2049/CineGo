@@ -91,6 +91,8 @@ function toTicketPass(ticket: TicketWithPassData): TicketPass {
       startsAt: showtime.startsAt.toISOString(),
       endsAt: showtime.endsAt.toISOString(),
       screenName: showtime.screen.name,
+      screenNumber: showtime.screen.number,
+      screenFormat: showtime.screen.format,
       cinemaName: showtime.screen.cinema.name,
     },
     movie: {

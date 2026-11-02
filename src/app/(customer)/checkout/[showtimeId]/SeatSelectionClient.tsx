@@ -213,7 +213,7 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
             · {startsAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
           </p>
           <p className="text-xs text-zinc-400 mt-0.5">
-            {showtime.screen.name} · {showtime.screen.cinemaName}
+            {showtime.screen.name} · {showtime.screen.format} · {showtime.screen.cinemaName}
           </p>
         </div>
       </header>
@@ -250,7 +250,7 @@ export default function SeatSelectionClient({ showtimeId, initialData }: Props) 
             seats={seats}
             selectedSeatIds={selectedSeatIds}
             onToggleSeat={handleToggleSeat}
-            screenName={showtime.screen.name}
+            screenName={`${showtime.screen.name} · ${showtime.screen.format}`}
             isHolding={isHolding || isPaying}
           />
           <SeatLegend />

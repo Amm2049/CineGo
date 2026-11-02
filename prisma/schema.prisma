@@ -96,10 +96,14 @@ model Cinema {
 model Screen {
   id        String     @id @default(uuid())
   cinemaId  String
-  name      String
+  number    Int // Theatre number within the cinema (1, 2, 3, ...)
+  name      String // Display name, e.g. "Theatre 1"
+  format    String // Projection format, e.g. "IMAX Laser", "Dolby Cinema"
   cinema    Cinema     @relation(fields: [cinemaId], references: [id])
   seats     Seat[]
   showtimes Showtime[]
+
+  @@unique([cinemaId, number])
 }
 
 model Seat {

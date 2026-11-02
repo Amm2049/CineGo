@@ -139,6 +139,7 @@ export async function getShowtimeSeatMap(
       screen: {
         id: showtime.screen.id,
         name: showtime.screen.name,
+        format: showtime.screen.format,
         cinemaName: showtime.screen.cinema.name,
       },
     },
