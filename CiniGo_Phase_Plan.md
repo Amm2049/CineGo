@@ -239,7 +239,7 @@ Create permanent milestone branch `phase/phase8-admin-deployment` off `develop`.
     * 1-Click **"⚡ Sync Latest Releases"** button with live progress indicator and toast notifications.
     * TMDB search input → live results list → **Import** button per result.
     * Imported movies table with edit (title, description override) and active/deactivate toggle.
-  * Add `CRON_SECRET=` and `TMDB_ACCESS_TOKEN=` to `.env.example`.
+  * Add `CRON_SECRET=` to `.env.example` (TMDB credentials are already there as `TMDB_READ_ACCESS_TOKEN` / `TMDB_API_KEY`).
   * Merge `feature/admin-movies-tmdb` into `phase/phase8-admin-deployment` and delete feature branch.
 * [ ] Branch `feature/admin-showtimes` off `phase/phase8-admin-deployment`:
   * Build Admin Dashboard (`/admin`): operational overview metrics (total movies, showtimes, revenue).

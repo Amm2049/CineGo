@@ -45,7 +45,7 @@ export interface TmdbPaginatedResponse<T> {
 
 export function hasTmdbCredentials(): boolean {
   const apiKey = process.env.TMDB_API_KEY;
-  const token = process.env.TMDB_READ_ACCESS_TOKEN || process.env.TMDB_ACCESS_TOKEN;
+  const token = process.env.TMDB_READ_ACCESS_TOKEN;
   return Boolean(
     (apiKey && apiKey !== "your-tmdb-api-key-here" && apiKey.trim().length > 0) ||
     (token && token !== "your-tmdb-access-token-here" && token.trim().length > 0)
@@ -54,7 +54,7 @@ export function hasTmdbCredentials(): boolean {
 
 function getRequestConfig(endpoint: string, params: Record<string, string | number> = {}) {
   const apiKey = process.env.TMDB_API_KEY;
-  const token = process.env.TMDB_READ_ACCESS_TOKEN || process.env.TMDB_ACCESS_TOKEN;
+  const token = process.env.TMDB_READ_ACCESS_TOKEN;
 
   const url = new URL(`${TMDB_BASE_URL}${endpoint}`);
   const headers: Record<string, string> = {
