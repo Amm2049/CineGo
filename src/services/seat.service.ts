@@ -304,10 +304,25 @@ export async function holdShowtimeSeats(params: {
       isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
     });
   } catch (error) {
+    // Losing a race for the same seat is expected, not a crash:
+    // P2002 = unique constraint on (showtimeId, seatId), P2034 = RepeatableRead write conflict
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2002" || error.code === "P2034")
+    ) {
+      console.warn(
+        `[SeatService] hold conflict (${error.code}) showtime=${showtimeId} seats=${seatIds.length}`
+      );
+      return {
+        success: false,
+        error: "This seat was just taken by another customer. Please choose different seats.",
+      };
+    }
+
     console.error("[SeatService] holdShowtimeSeats error:", error);
     return {
       success: false,
-      error: "Failed to reserve seats due to a concurrency conflict. Please try again.",
+      error: "Could not reserve your seats. Please try again.",
     };
   }
 }

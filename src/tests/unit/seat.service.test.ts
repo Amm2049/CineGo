@@ -1,5 +1,6 @@
 // src/tests/unit/seat.service.test.ts
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { Prisma } from "@prisma/client";
 import { getRowTier, HOLD_DURATION_MS } from "@/services/seat.service";
 
 describe("Seat Service Tier Calculations", () => {
@@ -37,6 +38,48 @@ describe("Seat Service Tier Calculations", () => {
     });
     expect(result.success).toBe(false);
     expect(result.error).toBe("No seats selected");
+  });
+});
+
+describe("holdShowtimeSeats error handling", () => {
+  const params = { showtimeId: "st-1", seatIds: ["seat-1"], userId: "user-1" };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each(["P2002", "P2034"])(
+    "treats %s as an expected seat conflict: short warning, no stack trace",
+    async (code) => {
+      const { holdShowtimeSeats } = await import("@/services/seat.service");
+      const { default: prisma } = await import("@/lib/prisma");
+      vi.spyOn(prisma, "$transaction").mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("conflict", { code, clientVersion: "test" })
+      );
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const result = await holdShowtimeSeats(params);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/just taken by another customer/);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0][0]).toContain(code);
+      expect(error).not.toHaveBeenCalled();
+    }
+  );
+
+  it("logs unexpected errors in full", async () => {
+    const { holdShowtimeSeats } = await import("@/services/seat.service");
+    const { default: prisma } = await import("@/lib/prisma");
+    vi.spyOn(prisma, "$transaction").mockRejectedValue(new Error("connection lost"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await holdShowtimeSeats(params);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Could not reserve your seats. Please try again.");
+    expect(error).toHaveBeenCalledTimes(1);
   });
 });
 
