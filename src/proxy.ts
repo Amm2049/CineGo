@@ -1,11 +1,11 @@
-// src/middleware.ts
-// Route protection: restricts /admin/* to ADMIN role only
+// src/proxy.ts
+// Route protection (Next.js 16 Proxy, formerly Middleware): restricts /admin/* to ADMIN role only
 // Unauthenticated users are redirected to /login with callbackUrl
 
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
