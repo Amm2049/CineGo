@@ -210,14 +210,14 @@ Create permanent milestone branch `phase/phase7-checkout-ticket` off `develop`. 
 
 ---
 
-## 🎥 Phase 8: Admin Panel, Camera WebCam QR Ticket Scanner & Deployment
+## 🎥 Phase 8: Admin Panel, Camera WebCam QR Ticket Scanner & Deployment (Code Complete — release pending)
 
 ### 🎯 Objective
 Create permanent milestone branch `phase/phase8-admin-deployment` off `develop`. Implement Admin Movies & Showtimes CRUD, WebCam Camera QR Scanner for ticket verification, GitHub Actions CI/CD, and Vercel deployment. Finally merge `develop` into `main`.
 
 ### 📋 Checklist & Tasks
-* [ ] Create milestone branch `phase/phase8-admin-deployment` off `develop`.
-* [ ] Branch `feature/admin-movies-tmdb` off `phase/phase8-admin-deployment`:
+* [x] Create milestone branch `phase/phase8-admin-deployment` off `develop`.
+* [x] Branch `feature/admin-movies-tmdb` off `phase/phase8-admin-deployment`:
   * Create `src/lib/tmdb.ts` — thin `fetch` wrapper for TMDB REST API (no SDK needed):
     * `searchMovies(query: string)` — calls `GET /search/movie`.
     * `getMovieDetails(tmdbId: number)` — calls `GET /movie/{id}` with `append_to_response=credits`.
@@ -241,17 +241,17 @@ Create permanent milestone branch `phase/phase8-admin-deployment` off `develop`.
     * Imported movies table with edit (title, description override) and active/deactivate toggle.
   * Add `CRON_SECRET=` to `.env.example` (TMDB credentials are already there as `TMDB_READ_ACCESS_TOKEN` / `TMDB_API_KEY`).
   * Merge `feature/admin-movies-tmdb` into `phase/phase8-admin-deployment` and delete feature branch.
-* [ ] Branch `feature/admin-showtimes` off `phase/phase8-admin-deployment`:
+* [x] Branch `feature/admin-showtimes` off `phase/phase8-admin-deployment`:
   * Build Admin Dashboard (`/admin`): operational overview metrics (total movies, showtimes, revenue).
   * Build Showtimes Management Page (`/admin/showtimes`): form-based CRUD — select movie, select screen, pick date/time range, validate no overlap on same screen, submit.
   * Merge `feature/admin-showtimes` into `phase/phase8-admin-deployment` and delete feature branch.
-* [ ] Branch `feature/ticket-scanner` off `phase/phase8-admin-deployment`:
+* [x] Branch `feature/ticket-scanner` off `phase/phase8-admin-deployment`:
   * Build Admin Ticket Scanner Page (`/admin/scanner`):
     * Install `html5-qrcode` (Browser WebCam QR scanner).
     * Build WebCam scanner component reading QR tokens + manual ticket code input fallback.
   * Build `/api/admin/verify-ticket` POST endpoint to validate and update ticket status to `USED`.
   * Merge `feature/ticket-scanner` into `phase/phase8-admin-deployment` and delete feature branch.
-* [ ] Branch `feature/ci-deployment` off `phase/phase8-admin-deployment`:
+* [x] Branch `feature/ci-deployment` off `phase/phase8-admin-deployment`:
   * Set up Vitest unit/integration tests and Playwright E2E tests.
   * Configure GitHub Actions CI workflow & deploy to Vercel.
   * Merge `feature/ci-deployment` into `phase/phase8-admin-deployment` and delete feature branch.

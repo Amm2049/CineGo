@@ -24,3 +24,15 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 
 ## Screens / theatres
 - `Screen.name` is the theatre ("Theatre 1"), `Screen.number` its number (unique per cinema), `Screen.format` the projection format ("IMAX Laser"). Format badges on movie cards read `screen.format`, never `screen.name`.
+
+## Admin & deployment (Phase 8)
+- Every `/api/admin/*` route must call `requireAdmin()` or `requireStaff()` (`src/lib/admin-guard.ts`); `proxy.ts` does not cover APIs.
+- Roles: CUSTOMER, STAFF (scanner + verify-ticket only), ADMIN. Admin-only pages call `requireAdminPage()`. Seed creates `staff@cinego.com` / `staff123`.
+- `/api/cron/sync-movies` is protected by `Bearer CRON_SECRET` (fails closed if unset). Schedule in `vercel.json`.
+- TMDB lists use `region=TH`; `Movie.releaseDate` is the Thai theatrical date from `release_dates`. Never fake dates.
+- Sync never overwrites `Movie.title/description/isActive` (admin-owned). Inactive movies are hidden, not deleted.
+- Showtime creation runs at Serializable (overlap = write skew), retried up to 3x on P2034, backed by `@@index([screenId, startsAt])`. 25-min cleaning buffer lives in `src/lib/schedule.ts`.
+- Ticket scan uses `updateMany WHERE status=ACTIVE` (compare-and-set); never read-then-update. It records `usedAt` and `scannedById` (from the session, never the body).
+- Server components must format times with `timeZone: Asia/Bangkok` (Vercel runs in UTC). Use helpers in `src/lib/schedule.ts`.
+- Prisma 7: `migrate dev` does not regenerate the client — run `npx prisma generate` after schema changes.
+- Production deploys run `prisma migrate deploy` automatically (`scripts/vercel-build.mjs`, `DIRECT_URL`). Never run the seed against production.
