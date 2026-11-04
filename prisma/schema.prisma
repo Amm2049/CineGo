@@ -36,10 +36,10 @@ enum TicketStatus {
 // ── Models ─────────────────────────────────────────────────
 
 model User {
-  id           String         @id @default(uuid())
-  email        String         @unique
-  name         String?
-  passwordHash String
+  id                       String         @id @default(uuid())
+  email                    String         @unique
+  name                     String?
+  passwordHash             String
   role                     Role           @default(CUSTOMER)
   recommendations          Json?
   recommendationsUpdatedAt DateTime?
@@ -73,6 +73,7 @@ model Movie {
   releaseDate DateTime
   posterUrl   String
   backdropUrl String
+  isActive    Boolean      @default(true) // false = hidden from the catalog
   genres      MovieGenre[]
   showtimes   Showtime[]
 }

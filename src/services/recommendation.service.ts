@@ -23,7 +23,9 @@ const inFlightRequests = new Map<string, Promise<RecommendationMap>>();
 /**
  * Invalidate cached recommendations for a user (e.g. when interests change or booking completes).
  */
-export async function invalidateUserRecommendations(userId: string): Promise<void> {
+export async function invalidateUserRecommendations(
+  userId: string,
+): Promise<void> {
   try {
     await prisma.user.update({
       where: { id: userId },
@@ -33,7 +35,10 @@ export async function invalidateUserRecommendations(userId: string): Promise<voi
       },
     });
   } catch (err) {
-    console.error("[RecommendationService] Error invalidating user recommendations:", err);
+    console.error(
+      "[RecommendationService] Error invalidating user recommendations:",
+      err,
+    );
   }
 }
 
@@ -43,7 +48,7 @@ export async function invalidateUserRecommendations(userId: string): Promise<voi
  */
 function calculateHeuristicRecommendations(
   userGenres: string[],
-  movies: CandidateMovie[]
+  movies: CandidateMovie[],
 ): MovieRecommendation[] {
   const userGenreSet = new Set(userGenres.map((g) => g.toLowerCase()));
 
@@ -56,7 +61,8 @@ function calculateHeuristicRecommendations(
 
     if (userGenres.length === 0) {
       matchScore = 70;
-      reason = "Popular choice among cinema goers. Select your favorite genres in Profile for tailored matches.";
+      reason =
+        "Popular choice among cinema goers. Select your favorite genres in Profile for tailored matches.";
     } else if (matchingGenres.length >= 2) {
       matchScore = Math.min(97, 88 + matchingGenres.length * 3);
       reason = `Strong match because you love ${matchingGenres.join(" and ")}.`;
@@ -82,7 +88,7 @@ function calculateHeuristicRecommendations(
  */
 async function computeRawRecommendations(
   userId: string,
-  candidateMovieIds?: string[]
+  candidateMovieIds?: string[],
 ): Promise<MovieRecommendation[]> {
   // 1. Fetch user genre preferences, booking history, and active catalog movies in parallel
   const [userInterests, pastBookings, allMoviesRaw] = await Promise.all([
@@ -107,6 +113,7 @@ async function computeRawRecommendations(
       orderBy: { createdAt: "desc" },
     }),
     prisma.movie.findMany({
+      where: { isActive: true },
       include: {
         genres: { include: { genre: true } },
       },
@@ -117,7 +124,7 @@ async function computeRawRecommendations(
 
   const userGenres = userInterests.map((ui) => ui.genre.name);
   const pastMovieTitles = Array.from(
-    new Set(pastBookings.map((b) => b.showtime.movie.title))
+    new Set(pastBookings.map((b) => b.showtime.movie.title)),
   );
 
   const candidateMovies: CandidateMovie[] = allMoviesRaw.map((m) => ({
@@ -133,7 +140,9 @@ async function computeRawRecommendations(
 
   // 2. If Gemini Client is not initialized (no API key), use heuristic fallback
   if (!geminiClient) {
-    console.info("[RecommendationService] GOOGLE_GEMINI_API_KEY not configured. Using heuristic matching.");
+    console.info(
+      "[RecommendationService] GOOGLE_GEMINI_API_KEY not configured. Using heuristic matching.",
+    );
     return calculateHeuristicRecommendations(userGenres, candidateMovies);
   }
 
@@ -174,23 +183,35 @@ Strict Instructions:
         .filter((item) => item && typeof item.movieId === "string")
         .map((item) => ({
           movieId: String(item.movieId),
-          matchScore: Math.min(99, Math.max(50, Math.round(Number(item.matchScore) || 70))),
-          reason: String(item.reason || "Recommended based on your cinematic taste profile."),
+          matchScore: Math.min(
+            99,
+            Math.max(50, Math.round(Number(item.matchScore) || 70)),
+          ),
+          reason: String(
+            item.reason || "Recommended based on your cinematic taste profile.",
+          ),
         }));
 
       if (validRecommendations.length > 0) {
         // Gap-filling: ensure 100% of candidate movies have a score
         const returnedIds = new Set(validRecommendations.map((r) => r.movieId));
-        const missingMovies = candidateMovies.filter((m) => !returnedIds.has(m.id));
+        const missingMovies = candidateMovies.filter(
+          (m) => !returnedIds.has(m.id),
+        );
         if (missingMovies.length > 0) {
-          const fallbackRecs = calculateHeuristicRecommendations(userGenres, missingMovies);
+          const fallbackRecs = calculateHeuristicRecommendations(
+            userGenres,
+            missingMovies,
+          );
           validRecommendations.push(...fallbackRecs);
         }
         return validRecommendations;
       }
     }
 
-    console.warn("[RecommendationService] Gemini returned invalid format. Falling back to heuristic.");
+    console.warn(
+      "[RecommendationService] Gemini returned invalid format. Falling back to heuristic.",
+    );
     return calculateHeuristicRecommendations(userGenres, candidateMovies);
   } catch (error) {
     console.error("[RecommendationService] Gemini API call error:", error);
@@ -203,9 +224,12 @@ Strict Instructions:
  */
 async function computeAndStoreRecommendations(
   userId: string,
-  candidateMovieIds?: string[]
+  candidateMovieIds?: string[],
 ): Promise<RecommendationMap> {
-  const recommendations = await computeRawRecommendations(userId, candidateMovieIds);
+  const recommendations = await computeRawRecommendations(
+    userId,
+    candidateMovieIds,
+  );
   const map: RecommendationMap = {};
 
   for (const rec of recommendations) {
@@ -222,7 +246,10 @@ async function computeAndStoreRecommendations(
       },
     });
   } catch (err) {
-    console.error("[RecommendationService] Failed to persist recommendations to DB:", err);
+    console.error(
+      "[RecommendationService] Failed to persist recommendations to DB:",
+      err,
+    );
   }
 
   return map;
@@ -237,7 +264,7 @@ async function computeAndStoreRecommendations(
  */
 export async function getMovieRecommendationsMap(
   userId: string,
-  candidateMovieIds?: string[]
+  candidateMovieIds?: string[],
 ): Promise<RecommendationMap> {
   if (!userId) return {};
 
@@ -258,19 +285,31 @@ export async function getMovieRecommendationsMap(
     });
 
     if (user?.recommendations && user.recommendationsUpdatedAt) {
-      const ageMs = Date.now() - new Date(user.recommendationsUpdatedAt).getTime();
+      const ageMs =
+        Date.now() - new Date(user.recommendationsUpdatedAt).getTime();
       if (ageMs < RECOMMENDATION_TTL_MS) {
         const cachedMap = user.recommendations as unknown as RecommendationMap;
-        if (typeof cachedMap === "object" && cachedMap !== null && Object.keys(cachedMap).length > 0) {
+        if (
+          typeof cachedMap === "object" &&
+          cachedMap !== null &&
+          Object.keys(cachedMap).length > 0
+        ) {
           // If candidate IDs are specified, ensure at least one matches our cached catalog
-          if (!candidateMovieIds || candidateMovieIds.length === 0 || candidateMovieIds.some((id) => cachedMap[id])) {
+          if (
+            !candidateMovieIds ||
+            candidateMovieIds.length === 0 ||
+            candidateMovieIds.some((id) => cachedMap[id])
+          ) {
             return cachedMap;
           }
         }
       }
     }
   } catch (err) {
-    console.error("[RecommendationService] Error querying cached recommendations:", err);
+    console.error(
+      "[RecommendationService] Error querying cached recommendations:",
+      err,
+    );
   }
 
   // 3. Cache miss or stale: compute on demand with in-flight deduplication
@@ -291,7 +330,7 @@ export async function getMovieRecommendationsMap(
  */
 export async function getMovieRecommendations(
   userId: string,
-  candidateMovieIds?: string[]
+  candidateMovieIds?: string[],
 ): Promise<MovieRecommendation[]> {
   const map = await getMovieRecommendationsMap(userId, candidateMovieIds);
   const list = Object.values(map);

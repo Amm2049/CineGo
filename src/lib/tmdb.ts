@@ -1,8 +1,11 @@
-﻿// src/lib/tmdb.ts
+// src/lib/tmdb.ts
 // CineGo -- TMDB REST API Client Wrapper
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p";
+
+/** CineGo is a Thai cinema: lists and release dates are for Thailand. */
+export const TMDB_REGION = "TH";
 
 export interface TmdbGenre {
   id: number;
@@ -22,6 +25,13 @@ export interface TmdbMovieSummary {
   popularity: number;
 }
 
+export interface TmdbReleaseDates {
+  results: {
+    iso_3166_1: string; // country code, e.g. "TH"
+    release_dates: { release_date: string; type: number; certification: string }[];
+  }[];
+}
+
 export interface TmdbMovieDetails {
   id: number;
   title: string;
@@ -34,6 +44,7 @@ export interface TmdbMovieDetails {
   vote_average: number;
   tagline: string | null;
   status: string;
+  release_dates?: TmdbReleaseDates; // present when append_to_response=release_dates
 }
 
 export interface TmdbPaginatedResponse<T> {
@@ -121,6 +132,7 @@ export async function searchMovies(
 export async function getMovieDetails(tmdbId: number): Promise<TmdbMovieDetails> {
   return tmdbFetch<TmdbMovieDetails>(`/movie/${tmdbId}`, {
     language: "en-US",
+    append_to_response: "release_dates", // Thai release dates in the same request
   });
 }
 
@@ -130,6 +142,7 @@ export async function getNowPlayingMovies(
   return tmdbFetch<TmdbPaginatedResponse<TmdbMovieSummary>>("/movie/now_playing", {
     page,
     language: "en-US",
+    region: TMDB_REGION, // only titles in Thai cinemas now
   });
 }
 
@@ -139,6 +152,7 @@ export async function getUpcomingMovies(
   return tmdbFetch<TmdbPaginatedResponse<TmdbMovieSummary>>("/movie/upcoming", {
     page,
     language: "en-US",
+    region: TMDB_REGION, // only titles with a future Thai release
   });
 }
 

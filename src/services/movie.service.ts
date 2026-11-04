@@ -16,6 +16,7 @@ export async function getNowShowingMovies(params?: MovieQueryParams) {
 
   return prisma.movie.findMany({
     where: {
+      isActive: true,
       releaseDate: { lte: now },
       showtimes: {
         some: {
@@ -46,6 +47,7 @@ export async function getUpcomingMovies(params?: MovieQueryParams) {
 
   return prisma.movie.findMany({
     where: {
+      isActive: true,
       releaseDate: { gt: now },
     },
     include: {
@@ -67,7 +69,7 @@ type CatalogRawMovie =
 
 export function formatCatalogMovie(
   movie: CatalogRawMovie,
-  isUpcoming: boolean
+  isUpcoming: boolean,
 ): MovieItem {
   const screens =
     "showtimes" in movie && Array.isArray(movie.showtimes)
@@ -79,7 +81,9 @@ export function formatCatalogMovie(
   const uniqueFormats = Array.from(new Set(screens));
 
   const firstShowtime =
-    "showtimes" in movie && Array.isArray(movie.showtimes) && movie.showtimes.length > 0
+    "showtimes" in movie &&
+    Array.isArray(movie.showtimes) &&
+    movie.showtimes.length > 0
       ? (movie.showtimes[0] as { id?: string })?.id
       : undefined;
 
