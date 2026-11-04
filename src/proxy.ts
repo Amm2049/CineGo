@@ -1,5 +1,6 @@
 // src/proxy.ts
-// Route protection (Next.js 16 Proxy, formerly Middleware): restricts /admin/* to ADMIN role only
+// Route protection (Next.js 16 Proxy, formerly Middleware): /admin/* is ADMIN only, except
+// /admin/scanner which STAFF may also use. /api/admin/* is NOT matched: each API checks the role itself.
 // Unauthenticated users are redirected to /login with callbackUrl
 
 import { getToken } from "next-auth/jwt";
@@ -22,9 +23,12 @@ export async function proxy(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    if (token.role !== "ADMIN") {
-      // Logged in but not admin -- redirect to homepage
-      return NextResponse.redirect(new URL("/", req.url));
+    // STAFF may use the ticket scanner; everything else under /admin is ADMIN only
+    const isScanner = pathname === "/admin/scanner" || pathname.startsWith("/admin/scanner/");
+    const allowed = token.role === "ADMIN" || (token.role === "STAFF" && isScanner);
+    if (!allowed) {
+      const target = token.role === "STAFF" ? "/admin/scanner" : "/";
+      return NextResponse.redirect(new URL(target, req.url));
     }
   }
 

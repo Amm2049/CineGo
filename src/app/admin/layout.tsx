@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login?callbackUrl=/admin");
   const role = session.user.role;
-  if (role !== "ADMIN") redirect("/");
+  if (role !== "ADMIN" && role !== "STAFF") redirect("/"); // STAFF: scanner only (see requireAdminPage)
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -39,6 +39,11 @@ export function requireAdmin() {
   return requireRole(["ADMIN"]);
 }
 
+/** Door scanning: ADMIN or STAFF. The only /api/admin route STAFF may call is verify-ticket. */
+export function requireStaff() {
+  return requireRole(["ADMIN", "STAFF"]);
+}
+
 /** Server-component version for admin-only pages: redirects instead of returning JSON. */
 export async function requireAdminPage(): Promise<void> {
   const session = await getServerSession(authOptions);

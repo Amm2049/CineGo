@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { getRowTier } from "@/services/seat.service";
 import { TicketPass } from "@/types";
+import { formatCinemaDateTime } from "@/lib/schedule";
 
 // QR payloads are prefixed so the Phase 8 scanner can reject non-CineGo QR codes
 export const QR_PAYLOAD_PREFIX = "CINEGO:";
@@ -137,5 +138,108 @@ export async function listUserTicketPasses(
   return {
     upcoming: passes.filter((t) => new Date(t.showtime.endsAt) > now).reverse(),
     past: passes.filter((t) => new Date(t.showtime.endsAt) <= now),
+  };
+}
+
+// ── Phase 8: door scanning ─────────────────────────────────
+
+const TICKET_CODE_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Ticket codes are UUIDs (crypto.randomUUID). Anything else is not ours. */
+export function isValidTicketCode(code: string): boolean {
+  return TICKET_CODE_PATTERN.test(code);
+}
+
+export const ENTRY_OPENS_MINUTES_BEFORE = 60;
+
+export type VerifyTicketOutcome =
+  | "ADMITTED"
+  | "ALREADY_USED"
+  | "NOT_FOUND"
+  | "INVALID_CODE"
+  | "TOO_EARLY"
+  | "SHOW_ENDED";
+
+export interface VerifyTicketResult {
+  outcome: VerifyTicketOutcome;
+  message: string;
+  ticket?: TicketPass;
+  usedAt?: string | null;
+}
+
+/**
+ * Validate a scanned/typed code and, if it is good, mark the ticket USED.
+ * `scannedById` is the logged-in ADMIN/STAFF user (audit trail).
+ * `now` is a parameter so tests can stand "at the door" before the show.
+ */
+export async function verifyAndUseTicket(
+  rawInput: string,
+  scannedById: string,
+  now: Date = new Date()
+): Promise<VerifyTicketResult> {
+  const ticketCode = parseQrPayload(rawInput).toLowerCase();
+  if (!isValidTicketCode(ticketCode)) {
+    // A restaurant-menu QR never costs a database query
+    return { outcome: "INVALID_CODE", message: "This is not a CineGo ticket." };
+  }
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { ticketCode },
+    include: ticketPassInclude,
+  });
+  if (!ticket) {
+    return { outcome: "NOT_FOUND", message: "No ticket exists with this code." };
+  }
+
+  const pass = toTicketPass(ticket);
+
+  // Reported before the time window: "already used" is what door staff must know first
+  if (ticket.status === "USED") {
+    return {
+      outcome: "ALREADY_USED",
+      message: "This ticket has already been used.",
+      ticket: pass,
+      usedAt: ticket.usedAt?.toISOString() ?? null,
+    };
+  }
+
+  const { startsAt, endsAt } = ticket.booking.showtime;
+  if (endsAt.getTime() <= now.getTime()) {
+    return { outcome: "SHOW_ENDED", message: "This show has already ended.", ticket: pass };
+  }
+  if (startsAt.getTime() - now.getTime() > ENTRY_OPENS_MINUTES_BEFORE * 60_000) {
+    return {
+      outcome: "TOO_EARLY",
+      message: `Entry opens ${ENTRY_OPENS_MINUTES_BEFORE} minutes before the show (${formatCinemaDateTime(startsAt)}).`,
+      ticket: pass,
+    };
+  }
+
+  // Compare-and-set: only flips ACTIVE -> USED in ONE statement.
+  // If another gate got there first, its UPDATE already changed the status and ours matches 0 rows.
+  const { count } = await prisma.ticket.updateMany({
+    where: { id: ticket.id, status: "ACTIVE" },
+    data: { status: "USED", usedAt: now, scannedById },
+  });
+
+  if (count === 0) {
+    const latest = await prisma.ticket.findUnique({
+      where: { id: ticket.id },
+      select: { usedAt: true },
+    });
+    return {
+      outcome: "ALREADY_USED",
+      message: "This ticket was just scanned at another entrance.",
+      ticket: { ...pass, status: "USED" },
+      usedAt: latest?.usedAt?.toISOString() ?? null,
+    };
+  }
+
+  const seatList = pass.seats.map((s) => s.label).join(", ");
+  return {
+    outcome: "ADMITTED",
+    message: `Admit ${pass.seats.length}: ${seatList}`,
+    ticket: { ...pass, status: "USED" },
+    usedAt: now.toISOString(),
   };
 }

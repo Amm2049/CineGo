@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildQrPayload,
   getBookingReference,
+  isValidTicketCode,
   parseQrPayload,
   QR_PAYLOAD_PREFIX,
 } from "@/services/ticket.service";
@@ -23,5 +24,17 @@ describe("Ticket Service Helpers", () => {
 
   it("accepts a manually typed ticket code without the prefix", () => {
     expect(parseQrPayload("  abc-123  ")).toBe("abc-123");
+  });
+});
+
+describe("isValidTicketCode", () => {
+  it("accepts a UUID, in any letter case", () => {
+    expect(isValidTicketCode("6f1c2d3e-4a5b-4c6d-8e7f-001122334455")).toBe(true);
+    expect(isValidTicketCode("6F1C2D3E-4A5B-4C6D-8E7F-001122334455")).toBe(true);
+  });
+  it("rejects anything else", () => {
+    expect(isValidTicketCode("https://example.com/menu")).toBe(false);
+    expect(isValidTicketCode("CINEGO:not-a-uuid")).toBe(false);
+    expect(isValidTicketCode("")).toBe(false);
   });
 });

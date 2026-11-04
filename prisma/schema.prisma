@@ -13,6 +13,7 @@ datasource db {
 
 enum Role {
   CUSTOMER
+  STAFF // door staff: ticket scanner only
   ADMIN
 }
 
@@ -46,6 +47,7 @@ model User {
   createdAt                DateTime       @default(now())
   bookings                 Booking[]
   interests                UserInterest[]
+  scannedTickets           Ticket[]       @relation("TicketScannedBy")
 }
 
 model Genre {
@@ -173,11 +175,14 @@ model Payment {
 }
 
 model Ticket {
-  id         String       @id @default(uuid())
-  bookingId  String       @unique
-  ticketCode String       @unique
-  qrPayload  String
-  status     TicketStatus @default(ACTIVE)
-  issuedAt   DateTime     @default(now())
-  booking    Booking      @relation(fields: [bookingId], references: [id])
+  id          String       @id @default(uuid())
+  bookingId   String       @unique
+  ticketCode  String       @unique
+  qrPayload   String
+  status      TicketStatus @default(ACTIVE)
+  issuedAt    DateTime     @default(now())
+  usedAt      DateTime? // when the scanner admitted the ticket
+  scannedById String? // who admitted it (ADMIN or STAFF user)
+  booking     Booking      @relation(fields: [bookingId], references: [id])
+  scannedBy   User?        @relation("TicketScannedBy", fields: [scannedById], references: [id])
 }

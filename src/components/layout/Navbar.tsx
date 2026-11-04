@@ -10,6 +10,7 @@ export default function Navbar() {
   const { data: session, status } = useSession();
   const isLoading = status === "loading";
   const isAdmin = session?.user?.role === "ADMIN";
+  const isStaff = session?.user?.role === "STAFF";
 
   const displayName =
     session?.user?.name ||
@@ -69,6 +70,14 @@ export default function Navbar() {
             >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
               Admin
+            </Link>
+          )}
+          {isStaff && (
+            <Link
+              href="/admin/scanner"
+              className="text-xs font-bold text-amber-400 hover:text-amber-300 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all"
+            >
+              Scanner
             </Link>
           )}
         </nav>

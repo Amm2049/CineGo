@@ -9,6 +9,7 @@ import "dotenv/config";
 import prisma from "@/lib/prisma";
 import { holdShowtimeSeats } from "@/services/seat.service";
 import { confirmBookingPayment } from "@/services/booking.service";
+import { verifyAndUseTicket } from "@/services/ticket.service";
 
 const RUN_ID = `concurrency-${Date.now()}`;
 const ROUNDS = 5;
@@ -103,6 +104,26 @@ async function main() {
       userId: rival,
     });
     check("Rival cannot hold a PAID seat", !steal.success, steal.error);
+
+    // 5. One ticket scanned at two entrances at once: exactly one admission (Phase 8)
+    const paidTicket = await prisma.ticket.findFirst({ where: { booking: { userId: payer } } });
+    if (paidTicket) {
+      const atTheDoor = new Date(showtime.startsAt.getTime() - 10 * 60 * 1000); // 10 min before start
+      const scans = await Promise.all([
+        // Any existing user id satisfies the scannedById foreign key in this test
+        verifyAndUseTicket(paidTicket.qrPayload, payer, atTheDoor),
+        verifyAndUseTicket(paidTicket.qrPayload, payer, atTheDoor),
+      ]);
+      const admitted = scans.filter((s) => s.outcome === "ADMITTED").length;
+      check("Double scan: exactly one entrance admits", admitted === 1, `${admitted} admitted`);
+      const audited = await prisma.ticket.findUnique({
+        where: { id: paidTicket.id },
+        select: { scannedById: true },
+      });
+      check("Double scan: scanner recorded", audited?.scannedById === payer);
+    } else {
+      check("Double scan: paid ticket exists", false);
+    }
 
     // 4. An expired hold can't be paid for
     const expiredSeat = seats[ROUNDS + 1];

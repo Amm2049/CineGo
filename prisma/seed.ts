@@ -455,6 +455,19 @@ async function main() {
   });
   console.log('👤 Admin user created: admin@cinego.com / admin123');
 
+  // Door staff: may only use the ticket scanner (Phase 8)
+  const staffPasswordHash = await bcrypt.hash('staff123', 12);
+  await prisma.user.upsert({
+    where: { email: 'staff@cinego.com' },
+    update: {},
+    create: {
+      email: 'staff@cinego.com',
+      passwordHash: staffPasswordHash,
+      role: 'STAFF',
+    },
+  });
+  console.log('👤 Staff user created: staff@cinego.com / staff123');
+
   console.log('\n✨ Seeding complete!');
   console.log('   Run `npx prisma studio` to inspect the data.\n');
 }
