@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { listUserTicketPasses } from "@/services/ticket.service";
 import { TicketPass } from "@/types";
+import { CINEMA_TIME_ZONE } from "@/lib/schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +30,9 @@ function TicketRow({ ticket, isPast }: { ticket: TicketPass; isPast: boolean }) 
         }`}
       >
         <div className="text-[11px] uppercase font-bold tracking-wider">
-          {startsAt.toLocaleDateString("en-US", { month: "short" })}
+          {startsAt.toLocaleDateString("en-US", { month: "short", timeZone: CINEMA_TIME_ZONE })}
         </div>
-        <div className="text-2xl font-black leading-none mt-0.5">{startsAt.getDate()}</div>
+        <div className="text-2xl font-black leading-none mt-0.5">{startsAt.toLocaleDateString("en-US", { day: "numeric", timeZone: CINEMA_TIME_ZONE })}</div>
       </div>
       <div className="relative w-10 h-15 shrink-0 rounded-md overflow-hidden border border-white/20 hidden sm:block">
         <Image src={ticket.movie.posterUrl} alt="" fill sizes="40px" className="object-cover" />
@@ -41,8 +42,8 @@ function TicketRow({ ticket, isPast }: { ticket: TicketPass; isPast: boolean }) 
           {ticket.movie.title}
         </h3>
         <p className="text-sm text-zinc-300 mt-0.5">
-          {startsAt.toLocaleDateString("en-US", { weekday: "short" })} ·{" "}
-          {startsAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} ·{" "}
+          {startsAt.toLocaleDateString("en-US", { weekday: "short", timeZone: CINEMA_TIME_ZONE })} ·{" "}
+          {startsAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: CINEMA_TIME_ZONE })} ·{" "}
           {ticket.showtime.screenName} · {ticket.showtime.screenFormat}
         </p>
         <p className="text-sm text-zinc-400 mt-0.5 truncate">

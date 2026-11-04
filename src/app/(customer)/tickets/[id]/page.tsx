@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTicketPassForUser } from "@/services/ticket.service";
 import TicketQRCode from "@/components/tickets/TicketQRCode";
+import { CINEMA_TIME_ZONE } from "@/lib/schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,11 @@ export default async function TicketPassPage({
   const startsAt = new Date(ticket.showtime.startsAt);
   const endsAt = new Date(ticket.showtime.endsAt);
   const isUsed = ticket.status === "USED";
-  const timeFormat: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
+  const timeFormat: Intl.DateTimeFormatOptions = {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: CINEMA_TIME_ZONE, // Vercel servers run in UTC
+  };
 
   return (
     <main className="min-h-screen bg-[#02020a] text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8">
@@ -76,6 +81,7 @@ export default async function TicketPassPage({
                   month: "short",
                   day: "numeric",
                   year: "numeric",
+                  timeZone: CINEMA_TIME_ZONE,
                 })}
               </p>
               <p className="text-sm text-[#c7d2fe]">

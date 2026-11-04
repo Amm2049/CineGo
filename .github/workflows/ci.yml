@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, "phase/**", "feature/**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Throwaway PostgreSQL next to the job: tests never touch the Neon data
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: cinego
+          POSTGRES_PASSWORD: cinego
+          POSTGRES_DB: cinego_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cinego"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    # Fake secrets are fine: they protect a database that lives for five minutes
+    env:
+      DATABASE_URL: postgresql://cinego:cinego@localhost:5432/cinego_test
+      NEXTAUTH_SECRET: ci-only-secret-not-used-anywhere-else
+      NEXTAUTH_URL: http://localhost:3000
+      CRON_SECRET: ci-only-cron-secret
+      CI: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (also runs prisma generate)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Migrate and seed a fresh database
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed
+
+      - name: Concurrency guarantees (real Postgres)
+        run: npm run test:concurrency
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
