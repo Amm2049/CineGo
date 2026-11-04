@@ -52,3 +52,50 @@ export async function updateAdminMovie(id: string, data: AdminMovieUpdate) {
     throw error;
   }
 }
+
+// ── Dashboard ──────────────────────────────────────────────
+
+export async function getDashboardStats() {
+  const now = new Date();
+
+  // Six independent queries in parallel: on Neon each round trip is noticeable
+  const [activeMovies, upcomingShowtimes, revenue, ticketsSold, ticketsUsed, recentPayments] =
+    await Promise.all([
+      prisma.movie.count({ where: { isActive: true } }),
+      prisma.showtime.count({ where: { startsAt: { gte: now } } }),
+      // Revenue = money actually paid, not Booking.totalAmount (PENDING bookings have totals too)
+      prisma.payment.aggregate({ where: { status: "SUCCESS" }, _sum: { amount: true } }),
+      prisma.ticket.count(),
+      prisma.ticket.count({ where: { status: "USED" } }),
+      prisma.payment.findMany({
+        where: { status: "SUCCESS" },
+        orderBy: { paidAt: "desc" },
+        take: 5,
+        include: {
+          booking: {
+            include: {
+              user: { select: { email: true } },
+              showtime: { select: { movie: { select: { title: true } } } },
+              _count: { select: { seats: true } },
+            },
+          },
+        },
+      }),
+    ]);
+
+  return {
+    activeMovies,
+    upcomingShowtimes,
+    totalRevenue: Number(revenue._sum.amount ?? 0), // _sum is null when there are no payments
+    ticketsSold,
+    ticketsUsed,
+    recentPayments: recentPayments.map((p) => ({
+      id: p.id,
+      email: p.booking.user.email,
+      movieTitle: p.booking.showtime.movie.title,
+      seats: p.booking._count.seats,
+      amount: Number(p.amount),
+      paidAt: p.paidAt.toISOString(),
+    })),
+  };
+}

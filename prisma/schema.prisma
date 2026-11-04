@@ -129,6 +129,7 @@ model Showtime {
   seats    BookingSeat[]
 
   @@index([movieId, startsAt])
+  @@index([screenId, startsAt]) // overlap check + "what is on this screen today"
 }
 
 model Booking {
