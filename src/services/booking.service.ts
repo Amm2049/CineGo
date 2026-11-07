@@ -1,6 +1,8 @@
 // src/services/booking.service.ts
 // CineGo — Atomic simulated payment: validates the user's seat hold, re-prices it server-side,
 // marks the booking PAID, records the Payment, and issues the digital Ticket in one transaction.
+// Used when PAYMENT_PROVIDER is not "stripe" (CI, concurrency test, offline demos). The Stripe
+// PromptPay path lives in payment.service.ts and reaches PAID only via settleSucceededPayment().
 
 import { randomUUID } from "crypto";
 import { Prisma } from "@prisma/client";
@@ -37,11 +39,21 @@ export async function confirmBookingPayment(params: {
           include: {
             showtime: { select: { startsAt: true } },
             seats: { include: { seat: true } },
+            payment: { select: { id: true } },
           },
         });
 
         if (!booking || booking.seats.length === 0) {
           return { success: false, error: "You have no held seats to pay for.", status: 409 };
+        }
+
+        if (booking.payment) {
+          // A PromptPay payment is already open for this booking (Payment.bookingId is unique)
+          return {
+            success: false,
+            error: "A payment is already in progress for these seats.",
+            status: 409,
+          };
         }
 
         if (booking.showtime.startsAt <= now) {
@@ -77,9 +89,11 @@ export async function confirmBookingPayment(params: {
         await tx.payment.create({
           data: {
             bookingId: booking.id,
+            provider: "SIMULATED",
             status: "SUCCESS",
             amount,
             transactionReference: `SIM-${randomUUID()}`,
+            paidAt: now,
           },
         });
 

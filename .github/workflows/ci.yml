@@ -30,6 +30,8 @@ jobs:
       NEXTAUTH_SECRET: ci-only-secret-not-used-anywhere-else
       NEXTAUTH_URL: http://localhost:3000
       CRON_SECRET: ci-only-cron-secret
+      # Phase 9: CI never calls Stripe; the simulated payment keeps the e2e and concurrency tests offline
+      PAYMENT_PROVIDER: simulated
       CI: true
 
     steps:

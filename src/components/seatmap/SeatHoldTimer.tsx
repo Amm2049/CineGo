@@ -1,5 +1,5 @@
 // src/components/seatmap/SeatHoldTimer.tsx
-// 5-minute seat reservation countdown timer
+// Countdown timer: 5-minute seat hold, and (Phase 9) the 10-minute PromptPay payment window
 
 "use client";
 
@@ -8,9 +8,10 @@ import { useEffect, useRef, useState } from "react";
 interface SeatHoldTimerProps {
   heldUntil: string | null;
   onExpire: () => void;
+  label?: string;
 }
 
-export default function SeatHoldTimer({ heldUntil, onExpire }: SeatHoldTimerProps) {
+export default function SeatHoldTimer({ heldUntil, onExpire, label = "Seats held" }: SeatHoldTimerProps) {
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
 
   // Keep the latest callback in a ref so parent re-renders don't restart the countdown
@@ -58,7 +59,7 @@ export default function SeatHoldTimer({ heldUntil, onExpire }: SeatHoldTimerProp
           : "bg-amber-950/40 border-amber-500/50 text-amber-300"
       }`}
     >
-      <span>⏱️ Seats held:</span>
+      <span>⏱️ {label}:</span>
       <span className="font-mono text-sm">
         {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
       </span>

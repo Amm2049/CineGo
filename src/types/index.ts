@@ -143,6 +143,34 @@ export interface PaymentResponse {
   amount: number;
 }
 
+// ── Phase 9: Stripe PromptPay Types ──────────────────────────
+
+export type PaymentProviderName = "simulated" | "stripe";
+
+export type PaymentStatusName = "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED" | "REFUNDED";
+
+/** What the checkout page needs to show the PromptPay QR and its countdown. */
+export interface PromptPayCheckout {
+  paymentId: string;
+  amount: number;
+  expiresAt: string; // end of the 10-minute payment window
+  qrImageUrl: string;
+  hostedInstructionsUrl: string; // Stripe page; in test mode it has "authorize / fail" buttons
+}
+
+/** POST /api/payments response: simulated pays at once, Stripe returns a QR to scan. */
+export type StartPaymentResponse =
+  | { provider: "simulated"; success: true; bookingId: string; ticketId: string; amount: number }
+  | { provider: "stripe"; success: true; checkout: PromptPayCheckout };
+
+/** GET /api/payments/[id] and POST /api/payments/[id]/cancel response. */
+export interface PaymentStatusResponse {
+  paymentId: string;
+  status: PaymentStatusName;
+  ticketId: string | null;
+  message: string | null;
+}
+
 export interface TicketPass {
   id: string;
   ticketCode: string;

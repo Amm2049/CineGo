@@ -95,7 +95,7 @@ export async function getDashboardStats() {
       movieTitle: p.booking.showtime.movie.title,
       seats: p.booking._count.seats,
       amount: Number(p.amount),
-      paidAt: p.paidAt.toISOString(),
+      paidAt: (p.paidAt ?? p.createdAt).toISOString(), // SUCCESS payments always have paidAt
     })),
   };
 }

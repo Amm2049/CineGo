@@ -25,8 +25,16 @@ enum BookingStatus {
 }
 
 enum PaymentStatus {
+  PENDING // Stripe PromptPay QR shown, waiting for the customer (Phase 9)
   SUCCESS
   FAILED
+  CANCELLED // payment window closed or customer cancelled; QR no longer payable
+  REFUNDED // paid after the seats were lost, money returned automatically
+}
+
+enum PaymentProvider {
+  SIMULATED
+  STRIPE
 }
 
 enum TicketStatus {
@@ -165,13 +173,19 @@ model BookingSeat {
 }
 
 model Payment {
-  id                   String        @id @default(uuid())
-  bookingId            String        @unique
+  id                   String          @id @default(uuid())
+  bookingId            String          @unique
+  provider             PaymentProvider @default(SIMULATED)
   status               PaymentStatus
   amount               Decimal
-  transactionReference String        @unique
-  paidAt               DateTime      @default(now())
-  booking              Booking       @relation(fields: [bookingId], references: [id])
+  transactionReference String          @unique // SIM-<uuid> or the Stripe PaymentIntent id (pi_...)
+  createdAt            DateTime        @default(now())
+  expiresAt            DateTime? // end of the 10-minute payment window (Stripe only)
+  paidAt               DateTime? // set only when status becomes SUCCESS
+  refundedAt           DateTime?
+  booking              Booking         @relation(fields: [bookingId], references: [id])
+
+  @@index([status, expiresAt])
 }
 
 model Ticket {

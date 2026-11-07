@@ -1,7 +1,7 @@
 # CINEMA TICKET BOOKING SYSTEM (CineGo)
-## Phase-by-Phase Modular Development Roadmap (`CiniGo_Phase_Plan.md` v1.4)
+## Phase-by-Phase Modular Development Roadmap (`CiniGo_Phase_Plan.md` v1.5)
 
-This roadmap divides the project into **8 manageable, self-contained phases** using a disciplined 4-tier **Phase-Based GitFlow branching model (`main` $\rightarrow$ `develop` $\rightarrow$ `phase/*` $\rightarrow$ `feature/*`)**. Each phase contains explicit deliverables, task checklists, Git branching instructions, and verification steps.
+This roadmap divides the project into **9 manageable, self-contained phases** using a disciplined 4-tier **Phase-Based GitFlow branching model (`main` $\rightarrow$ `develop` $\rightarrow$ `phase/*` $\rightarrow$ `feature/*`)**. Each phase contains explicit deliverables, task checklists, Git branching instructions, and verification steps.
 
 ---
 
@@ -210,7 +210,7 @@ Create permanent milestone branch `phase/phase7-checkout-ticket` off `develop`. 
 
 ---
 
-## 🎥 Phase 8: Admin Panel, Camera WebCam QR Ticket Scanner & Deployment (Code Complete — release pending)
+## 🎥 Phase 8: Admin Panel, Camera WebCam QR Ticket Scanner & Deployment (Completed — production release moved to Phase 9)
 
 ### 🎯 Objective
 Create permanent milestone branch `phase/phase8-admin-deployment` off `develop`. Implement Admin Movies & Showtimes CRUD, WebCam Camera QR Scanner for ticket verification, GitHub Actions CI/CD, and Vercel deployment. Finally merge `develop` into `main`.
@@ -255,11 +255,48 @@ Create permanent milestone branch `phase/phase8-admin-deployment` off `develop`.
   * Set up Vitest unit/integration tests and Playwright E2E tests.
   * Configure GitHub Actions CI workflow & deploy to Vercel.
   * Merge `feature/ci-deployment` into `phase/phase8-admin-deployment` and delete feature branch.
-* [ ] Merge `phase/phase8-admin-deployment` into `develop` (preserving `phase/phase8-admin-deployment` on GitHub).
-* [ ] Finally merge `develop` into `main` for Production Release!
+* [x] Merge `phase/phase8-admin-deployment` into `develop` (preserving `phase/phase8-admin-deployment` on GitHub).
+* [ ] ~~Finally merge `develop` into `main` for Production Release!~~ → moved to the end of Phase 9 so the release includes real payments.
 
 ### ✅ Verification Checkpoint
 * Test `/api/cron/sync-movies` endpoint with valid and invalid `CRON_SECRET` tokens.
 * Test Admin 1-Click Sync button and single movie search-and-import on `/admin/movies`.
 * Test WebCam QR scanner with a mobile phone screen displaying a digital ticket pass. Verify ticket marks `USED`.
 * Verify green build status on GitHub Actions & live Vercel production deployment URL.
+
+---
+
+## 💳 Phase 9: Stripe PromptPay Payment (Test Mode) with Simulated Fallback (In Progress)
+
+### 🎯 Objective
+Create permanent milestone branch `phase/phase9-payments` off `develop`. Replace the simulated payment with a real **Stripe PromptPay** payment in **test mode**, keep the simulated payment as a fallback behind `PAYMENT_PROVIDER`, and solve the "5-minute seat hold vs. payment time" problem. Finally merge `develop` into `main` for the production release. Step-by-step guide: `Phase9_Guide.md`.
+
+### 🧭 Design: seat hold vs. payment time (3 layers)
+1. **Separate payment window.** Clicking "Pay with PromptPay" extends the hold **once**: the customer gets **10 minutes** to pay; seats stay held **10 + 2 minutes** (grace for late webhooks). Seats are locked while the payment is open; paying again reuses the same PaymentIntent.
+2. **Cancel when the window closes.** The server cancels the PaymentIntent so the QR stops working — triggered by the customer's countdown, the 3-second status poll, or another customer holding those seats (no cron: Vercel Hobby crons run daily). If the customer paid at the last second, the cancel fails and the payment is settled instead.
+3. **The webhook never loses money.** Only `payment_intent.succeeded` can mark a booking `PAID`. Seats still owned → `PAID` + ticket (even if the hold expired); seats taken by someone else → **automatic refund**; duplicate events → no-op.
+
+### 📋 Checklist & Tasks
+* [x] Create milestone branch `phase/phase9-payments` off `develop`.
+* [x] Branch `feature/stripe-promptpay` off `phase/phase9-payments`:
+  * Install `stripe`; add `src/lib/stripe.ts` (lazy client, test-mode keys only) and `src/lib/payment-config.ts` (provider switch, 10 + 2 min window, `decideSettlement()`).
+  * Schema: `PaymentStatus` + `PENDING`/`CANCELLED`/`REFUNDED`, new `PaymentProvider` enum, `Payment.provider/createdAt/expiresAt/refundedAt`, nullable `paidAt` (migration `20261105090000_stripe_promptpay_payments`).
+  * `src/services/payment.service.ts`: start (reserve → PaymentIntent → link), settle (confirm or refund, idempotent), close (cancel PaymentIntent, release seats), status sync, webhook event handler.
+  * API: `POST /api/payments` (provider switch), `GET /api/payments/[id]`, `POST /api/payments/[id]/cancel`, `POST /api/webhooks/stripe`; hold route closes expired payments before holding.
+  * Seat holds locked while a payment is open (`holdShowtimeSeats`, `releaseShowtimeSeats`).
+  * UI: `PromptPayPanel` (QR, 10-min countdown, 3-s polling, cancel, test-mode link) in the checkout page; open payment survives a reload.
+  * Unit tests for the window, provider switch, satang conversion, settlement rule, and test-key guard. CI pins `PAYMENT_PROVIDER=simulated`.
+* [ ] Merge `feature/stripe-promptpay` into `phase/phase9-payments` and delete feature branch.
+* [ ] Apply the migration (`npx prisma migrate deploy`) and set `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` locally and on Vercel.
+* [ ] Register the Stripe webhook endpoint (`/api/webhooks/stripe`: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`).
+* [ ] Merge `phase/phase9-payments` into `develop` (preserving `phase/phase9-payments` on GitHub).
+* [ ] Finally merge `develop` into `main` for Production Release!
+
+### ✅ Verification Checkpoint
+* Pay with PromptPay in test mode (Stripe's hosted test page → "Authorize") and verify the page redirects to the ticket within ~3 seconds.
+* Fail a test payment and verify the seats are released with a clear message.
+* Let the 10-minute countdown run out and verify the QR can no longer be paid and the seats become available after the window.
+* Replay a `payment_intent.succeeded` event (`stripe events resend`) and verify no second ticket or payment is created.
+* Simulate a late payment after another customer took the seats and verify an automatic refund (`Payment.status = REFUNDED`).
+* With `PAYMENT_PROVIDER` unset, verify the simulated payment still works and CI stays green.
+

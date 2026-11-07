@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { holdShowtimeSeats } from "@/services/seat.service";
+import { closeExpiredPaymentsForSeats } from "@/services/payment.service";
 
 export async function POST(
   request: NextRequest,
@@ -29,6 +30,11 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // Phase 9: close PromptPay payments whose window is over before their seats can be taken.
+    // Runs for every provider (one query when there are none) so switching back to the
+    // simulated payment never leaves seats locked behind an old Stripe payment.
+    await closeExpiredPaymentsForSeats({ showtimeId, seatIds, userId: session.user.id });
 
     const result = await holdShowtimeSeats({
       showtimeId,

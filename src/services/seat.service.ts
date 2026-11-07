@@ -235,17 +235,29 @@ export async function holdShowtimeSeats(params: {
       }
 
       // 3. Find or create user's PENDING booking for this showtime
-      let booking = await tx.booking.findFirst({
+      const existing = await tx.booking.findFirst({
         where: {
           showtimeId,
           userId,
           status: "PENDING",
         },
+        include: { payment: { select: { status: true } } },
       });
 
-      if (booking) {
+      // Phase 9: seats are locked while a PromptPay payment is open. Expired payments were
+      // already closed by closeExpiredPaymentsForSeats() in the hold route.
+      if (existing?.payment) {
+        return {
+          success: false,
+          error: "You have a PromptPay payment in progress. Finish or cancel it before changing seats.",
+        };
+      }
+
+      let booking: { id: string };
+      if (existing) {
+        booking = existing;
         // Update total
-        booking = await tx.booking.update({
+        await tx.booking.update({
           where: { id: booking.id },
           data: { totalAmount },
         });
@@ -344,9 +356,13 @@ export async function releaseShowtimeSeats(params: {
         userId,
         status: "PENDING",
       },
+      include: { payment: { select: { status: true } } },
     });
 
     if (!booking) return { success: true };
+
+    // Phase 9: an open PromptPay payment owns these seats; only closing the payment releases them
+    if (booking.payment) return { success: false };
 
     if (seatIds && seatIds.length > 0) {
       await prisma.bookingSeat.deleteMany({
