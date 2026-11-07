@@ -286,17 +286,19 @@ Create permanent milestone branch `phase/phase9-payments` off `develop`. Replace
   * Seat holds locked while a payment is open (`holdShowtimeSeats`, `releaseShowtimeSeats`).
   * UI: `PromptPayPanel` (QR, 10-min countdown, 3-s polling, cancel, test-mode link) in the checkout page; open payment survives a reload.
   * Unit tests for the window, provider switch, satang conversion, settlement rule, and test-key guard. CI pins `PAYMENT_PROVIDER=simulated`.
+* [x] Apply the migration (`npx prisma migrate deploy`) and set `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` locally *(done 2026-11-07 — dedicated Thai Stripe test account "CineGo sandbox", PromptPay on)*.
+* [x] Forward Stripe webhooks locally: `npm run stripe:listen` (`scripts/stripe-listen.mjs` — uses `STRIPE_SECRET_KEY` from `.env`, forwards the 3 `payment_intent.*` events to `/api/webhooks/stripe`).
+* [ ] Finish the remaining verification checks below.
 * [ ] Merge `feature/stripe-promptpay` into `phase/phase9-payments` and delete feature branch.
-* [ ] Apply the migration (`npx prisma migrate deploy`) and set `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` locally and on Vercel.
-* [ ] Register the Stripe webhook endpoint (`/api/webhooks/stripe`: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`).
 * [ ] Merge `phase/phase9-payments` into `develop` (preserving `phase/phase9-payments` on GitHub).
 * [ ] Finally merge `develop` into `main` for Production Release!
+* [ ] **Later, at deployment (not started — project is local-only for now):** set `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` on Vercel and register the webhook endpoint (`/api/webhooks/stripe`: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`) in the Stripe dashboard.
 
 ### ✅ Verification Checkpoint
-* Pay with PromptPay in test mode (Stripe's hosted test page → "Authorize") and verify the page redirects to the ticket within ~3 seconds.
-* Fail a test payment and verify the seats are released with a clear message.
-* Let the 10-minute countdown run out and verify the QR can no longer be paid and the seats become available after the window.
-* Replay a `payment_intent.succeeded` event (`stripe events resend`) and verify no second ticket or payment is created.
-* Simulate a late payment after another customer took the seats and verify an automatic refund (`Payment.status = REFUNDED`).
-* With `PAYMENT_PROVIDER` unset, verify the simulated payment still works and CI stays green.
+* [x] Pay with PromptPay in test mode (Stripe's hosted test page → "Authorize") and verify the page redirects to the ticket within ~3 seconds. *(2026-11-07: Payment SUCCESS, amount ฿560 = seat total, booking PAID, 1 ACTIVE ticket)*
+* [x] Fail a test payment and verify the seats are released with a clear message. *(2026-11-07: Payment FAILED, booking EXPIRED, BookingSeats removed, no ticket)*
+* [ ] Let the 10-minute countdown run out and verify the QR can no longer be paid and the seats become available after the window.
+* [x] Replay a `payment_intent.succeeded` event (`stripe events resend`) and verify no second ticket or payment is created. *(2026-11-07: still 1 payment and 1 ticket for the intent)*
+* [ ] Simulate a late payment after another customer took the seats and verify an automatic refund (`Payment.status = REFUNDED`). *(plan: automated test of the refund path)*
+* [ ] With `PAYMENT_PROVIDER` unset, verify the simulated payment still works and CI stays green.
 

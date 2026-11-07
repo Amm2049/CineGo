@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "test:concurrency": "tsx scripts/concurrency-test.ts",
     "test:e2e": "playwright test",
+    "stripe:listen": "node scripts/stripe-listen.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
