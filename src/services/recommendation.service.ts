@@ -2,6 +2,7 @@
 // CineGo -- Hybrid AI Movie Recommendation Engine
 // Backed by PostgreSQL JSON persistence + In-flight deduplication + Google Gemini LLM API
 
+import { after } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { geminiClient, GEMINI_MODEL } from "@/lib/gemini";
@@ -17,11 +18,17 @@ interface CandidateMovie {
 // 24-hour TTL for cached recommendations in the database
 const RECOMMENDATION_TTL_MS = 24 * 60 * 60 * 1000;
 
-// In-flight deduplication map: coalesces concurrent requests for the same user
+// A Gemini call scores the whole catalog and takes ~30-55 s. It only ever runs in the
+// background (after the response), so allow plenty of time but never hang forever.
+const GEMINI_TIMEOUT_MS = 120_000;
+
+// In-flight deduplication map: coalesces concurrent refreshes for the same user
 const inFlightRequests = new Map<string, Promise<RecommendationMap>>();
 
 /**
- * Invalidate cached recommendations for a user (e.g. when interests change or booking completes).
+ * Mark a user's cached recommendations as stale (e.g. after a booking is paid).
+ * The old scores stay visible until the background refresh replaces them, so the
+ * next page load never waits for Gemini.
  */
 export async function invalidateUserRecommendations(
   userId: string,
@@ -29,10 +36,7 @@ export async function invalidateUserRecommendations(
   try {
     await prisma.user.update({
       where: { id: userId },
-      data: {
-        recommendations: Prisma.DbNull,
-        recommendationsUpdatedAt: null,
-      },
+      data: { recommendationsUpdatedAt: null },
     });
   } catch (err) {
     console.error(
@@ -82,13 +86,45 @@ function calculateHeuristicRecommendations(
   });
 }
 
+function toMap(recommendations: MovieRecommendation[]): RecommendationMap {
+  const map: RecommendationMap = {};
+  for (const rec of recommendations) map[rec.movieId] = rec;
+  return map;
+}
+
+/** Fast genre-overlap scores (two DB queries, no LLM) shown while Gemini runs in the background. */
+async function computeHeuristicMap(userId: string): Promise<RecommendationMap> {
+  const [userInterests, movies] = await Promise.all([
+    prisma.userInterest.findMany({
+      where: { userId },
+      include: { genre: true },
+    }),
+    prisma.movie.findMany({
+      where: { isActive: true },
+      include: { genres: { include: { genre: true } } },
+      take: 50,
+      orderBy: { releaseDate: "desc" },
+    }),
+  ]);
+  return toMap(
+    calculateHeuristicRecommendations(
+      userInterests.map((ui) => ui.genre.name),
+      movies.map((m) => ({
+        id: m.id,
+        title: m.title,
+        description: m.description,
+        genres: m.genres.map((g) => g.genre.name),
+      })),
+    ),
+  );
+}
+
 /**
  * Raw computation of recommendations via Gemini LLM or heuristic fallback.
  * Scores the cinema catalog for a user given their genre interests & booking history.
  */
 async function computeRawRecommendations(
   userId: string,
-  candidateMovieIds?: string[],
 ): Promise<MovieRecommendation[]> {
   // 1. Fetch user genre preferences, booking history, and active catalog movies in parallel
   const [userInterests, pastBookings, allMoviesRaw] = await Promise.all([
@@ -172,6 +208,7 @@ Strict Instructions:
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        httpOptions: { timeout: GEMINI_TIMEOUT_MS },
       },
     });
 
@@ -224,17 +261,8 @@ Strict Instructions:
  */
 async function computeAndStoreRecommendations(
   userId: string,
-  candidateMovieIds?: string[],
 ): Promise<RecommendationMap> {
-  const recommendations = await computeRawRecommendations(
-    userId,
-    candidateMovieIds,
-  );
-  const map: RecommendationMap = {};
-
-  for (const rec of recommendations) {
-    map[rec.movieId] = rec;
-  }
+  const map = toMap(await computeRawRecommendations(userId));
 
   // Persist to database so subsequent page loads read from DB (~3ms)
   try {
@@ -255,12 +283,48 @@ async function computeAndStoreRecommendations(
   return map;
 }
 
+/** Start a Gemini refresh for this user unless one is already running. */
+function refreshRecommendations(userId: string): Promise<RecommendationMap> {
+  const existing = inFlightRequests.get(userId);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    try {
+      return await computeAndStoreRecommendations(userId);
+    } finally {
+      inFlightRequests.delete(userId);
+    }
+  })();
+  inFlightRequests.set(userId, promise);
+  return promise;
+}
+
 /**
- * Fetch personalized movie recommendations map for a user.
- * 1. Checks PostgreSQL for cached recommendations (fresh within 24h).
- * 2. If present and fresh -> returns in ~2-5ms (zero LLM overhead).
- * 3. If stale or missing -> coalesces concurrent in-flight requests and computes via Gemini,
- *    storing the results to Postgres before returning.
+ * Run the refresh after the response has been sent (Next.js `after`), so no page
+ * waits for Gemini. Outside a request (scripts, tests) it simply runs detached.
+ */
+function scheduleRefresh(userId: string): void {
+  if (inFlightRequests.has(userId)) return;
+  const run = () =>
+    refreshRecommendations(userId)
+      .then(() => undefined)
+      .catch((err) =>
+        console.error("[RecommendationService] Background refresh failed:", err),
+      );
+  try {
+    after(run);
+  } catch {
+    void run();
+  }
+}
+
+/**
+ * Fetch personalized movie recommendations map for a user. Never waits for Gemini:
+ * 1. Fresh cache (within 24h, covering the requested movies) -> returned as-is (~3-5ms).
+ * 2. Stale cache (expired, marked stale after a booking, or missing new movies)
+ *    -> returned as-is while Gemini refreshes in the background.
+ * 3. No cache (new user or genres just changed) -> fast genre-overlap scores now,
+ *    Gemini refresh in the background. The next page load shows the AI scores.
  */
 export async function getMovieRecommendationsMap(
   userId: string,
@@ -268,13 +332,6 @@ export async function getMovieRecommendationsMap(
 ): Promise<RecommendationMap> {
   if (!userId) return {};
 
-  // 1. In-flight coalescing: share promise if another request is already computing for this user
-  const existingPromise = inFlightRequests.get(userId);
-  if (existingPromise) {
-    return existingPromise;
-  }
-
-  // 2. Check Database for cached recommendations
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -284,26 +341,27 @@ export async function getMovieRecommendationsMap(
       },
     });
 
-    if (user?.recommendations && user.recommendationsUpdatedAt) {
-      const ageMs =
-        Date.now() - new Date(user.recommendationsUpdatedAt).getTime();
-      if (ageMs < RECOMMENDATION_TTL_MS) {
-        const cachedMap = user.recommendations as unknown as RecommendationMap;
-        if (
-          typeof cachedMap === "object" &&
-          cachedMap !== null &&
-          Object.keys(cachedMap).length > 0
-        ) {
-          // If candidate IDs are specified, ensure at least one matches our cached catalog
-          if (
-            !candidateMovieIds ||
-            candidateMovieIds.length === 0 ||
-            candidateMovieIds.some((id) => cachedMap[id])
-          ) {
-            return cachedMap;
-          }
-        }
-      }
+    const cachedMap = user?.recommendations as unknown as
+      | RecommendationMap
+      | null
+      | undefined;
+
+    if (
+      cachedMap &&
+      typeof cachedMap === "object" &&
+      Object.keys(cachedMap).length > 0
+    ) {
+      const fresh =
+        user?.recommendationsUpdatedAt != null &&
+        Date.now() - new Date(user.recommendationsUpdatedAt).getTime() <
+          RECOMMENDATION_TTL_MS;
+      const coversCatalog =
+        !candidateMovieIds ||
+        candidateMovieIds.length === 0 ||
+        candidateMovieIds.some((id) => cachedMap[id]);
+
+      if (!fresh || !coversCatalog) scheduleRefresh(userId);
+      return cachedMap;
     }
   } catch (err) {
     console.error(
@@ -312,17 +370,13 @@ export async function getMovieRecommendationsMap(
     );
   }
 
-  // 3. Cache miss or stale: compute on demand with in-flight deduplication
-  const computePromise = (async () => {
-    try {
-      return await computeAndStoreRecommendations(userId, candidateMovieIds);
-    } finally {
-      inFlightRequests.delete(userId);
-    }
-  })();
-
-  inFlightRequests.set(userId, computePromise);
-  return computePromise;
+  scheduleRefresh(userId);
+  try {
+    return await computeHeuristicMap(userId);
+  } catch (err) {
+    console.error("[RecommendationService] Heuristic fallback failed:", err);
+    return {};
+  }
 }
 
 /**
