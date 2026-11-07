@@ -288,7 +288,7 @@ Create permanent milestone branch `phase/phase9-payments` off `develop`. Replace
   * Unit tests for the window, provider switch, satang conversion, settlement rule, and test-key guard. CI pins `PAYMENT_PROVIDER=simulated`.
 * [x] Apply the migration (`npx prisma migrate deploy`) and set `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` locally *(done 2026-11-07 — dedicated Thai Stripe test account "CineGo sandbox", PromptPay on)*.
 * [x] Forward Stripe webhooks locally: `npm run stripe:listen` (`scripts/stripe-listen.mjs` — uses `STRIPE_SECRET_KEY` from `.env`, forwards the 3 `payment_intent.*` events to `/api/webhooks/stripe`).
-* [ ] Finish the remaining verification checks below.
+* [ ] Finish the remaining verification checks below — **deferred to the whole-app testing phase** (countdown expiry, late-payment refund, simulated fallback).
 * [ ] Merge `feature/stripe-promptpay` into `phase/phase9-payments` and delete feature branch.
 * [ ] Merge `phase/phase9-payments` into `develop` (preserving `phase/phase9-payments` on GitHub).
 * [ ] Finally merge `develop` into `main` for Production Release!
