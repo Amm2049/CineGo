@@ -51,6 +51,7 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 - Images (Next 16): `priority` is deprecated; mark the LCP image with `loading="eager"` + `fetchPriority="high"` (MovieCard `priority` prop does this). Fixed-size thumbnails in flex rows need both dimensions in CSS plus `shrink-0`. `<html>` has `data-scroll-behavior="smooth"` because globals.css sets smooth scrolling.
 - Prisma 7: `migrate dev` does not regenerate the client — run `npx prisma generate` after schema changes.
 - Production deploys run `prisma migrate deploy` automatically (`scripts/vercel-build.mjs`, `DIRECT_URL`). Never run the seed against production.
+- Production = Vercel project `cinego` (https://cinego-nu.vercel.app, region sin1) on its own Neon DB (`PROD_DATABASE_URL`/`PROD_DIRECT_URL` in local `.env`). Fill an empty production DB with `npm run setup:production [-- --apply]` (never deletes; accounts use `PROD_ADMIN_PASSWORD`/`PROD_STAFF_PASSWORD`). Preview deployments use the dev DB and simulated payments.
 
 ## Payments: Stripe PromptPay (Phase 9)
 - `PAYMENT_PROVIDER=stripe` switches `/api/payments` to Stripe PromptPay; unset/anything else = simulated (CI sets `simulated`). `src/lib/stripe.ts` refuses non-test keys.

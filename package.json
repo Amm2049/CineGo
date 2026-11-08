@@ -16,6 +16,7 @@
     "test:e2e": "playwright test",
     "dev:ticket": "tsx scripts/dev-ticket.ts",
     "movies:hide-non-english": "tsx scripts/hide-non-english.ts",
+    "setup:production": "tsx scripts/setup-production.ts",
     "stripe:listen":"node scripts/stripe-listen.mjs",
     "postinstall": "prisma generate"
   },
