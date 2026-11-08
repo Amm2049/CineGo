@@ -108,7 +108,7 @@ Create permanent milestone branch `phase/phase4-movies` off `develop`. Build the
 * [x] Create milestone branch `phase/phase4-movies` off `develop`.
 * [x] Branch `feature/homepage-catalog` off `phase/phase4-movies`:
   * Build Homepage (`/`) as a **Server Component**:
-    * Hero Banner (featured blockbuster — first "Now Showing" movie from DB).
+    * Hero Banner (featured blockbuster — first "Now Showing" movie from DB). *Phase 10: now the 5 most popular upcoming releases (`getHeroMovies()`).*
     * 5-card **Now Showing** preview: Prisma query `WHERE releaseDate ≤ today AND showtimes.some(startsAt ≥ today)`, with in-line `🔥 AI Match` badges, fully clickable cards + *"View All Movies →"* CTA.
     * 5-card **Upcoming Releases** preview: Prisma query `WHERE releaseDate > today`, with in-line `🔥 AI Match` badges, fully clickable cards + *"Explore All Upcoming →"* CTA.
     * Extract interactive parts (e.g., hero carousel state) into a dedicated Client Component; keep data-fetching in the Server Component.

@@ -14,7 +14,8 @@ export interface SpotlightMovie {
   posterUrl: string;
   duration: number;
   genres: string[];
-  formats: string[];
+  /** "17 Dec" for an upcoming release; null when it is already showing. */
+  opensLabel: string | null;
 }
 
 interface HeroSpotlightProps {
@@ -69,16 +70,8 @@ export default function HeroSpotlight({ movies }: HeroSpotlightProps) {
           {/* Formats & Tags */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] uppercase font-black tracking-widest px-3 py-1 rounded-full bg-[#2500f0]/80 text-white border border-[#5938ff] shadow-[0_0_16px_rgba(37,0,240,0.6)]">
-              Featured Premiere
+              {current.opensLabel ? "Most Anticipated" : "Featured Premiere"}
             </span>
-            {current.formats.map((fmt) => (
-              <span
-                key={fmt}
-                className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-white/[0.08] text-[#c7d2fe] border border-white/15 backdrop-blur-md"
-              >
-                {fmt}
-              </span>
-            ))}
           </div>
 
           {/* Title */}
@@ -92,7 +85,11 @@ export default function HeroSpotlight({ movies }: HeroSpotlightProps) {
             <span>•</span>
             <span>{current.genres.join(" / ")}</span>
             <span>•</span>
-            <span className="text-emerald-400 font-bold">Now Showing</span>
+            {current.opensLabel ? (
+              <span className="text-amber-300 font-bold">Opens {current.opensLabel}</span>
+            ) : (
+              <span className="text-emerald-400 font-bold">Now Showing</span>
+            )}
           </div>
 
           {/* Description Hook */}
@@ -107,7 +104,8 @@ export default function HeroSpotlight({ movies }: HeroSpotlightProps) {
               prefetch={false}
               className="btn-cobalt text-xs font-black uppercase tracking-wider px-6 py-3 rounded-xl flex items-center gap-2"
             >
-              <span>Reserve Seats</span>
+              {/* Upcoming: no showtimes yet, so the movie page shows details and the opening date */}
+              <span>{current.opensLabel ? "View Details" : "Reserve Seats"}</span>
               <span>→</span>
             </Link>
             <Link

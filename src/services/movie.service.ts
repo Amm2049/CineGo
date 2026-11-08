@@ -118,6 +118,29 @@ export async function getUpcomingMovies(params?: MovieQueryParams) {
 }
 
 /**
+ * Home hero (Phase 10): the most anticipated upcoming releases — active, not out yet in Thailand,
+ * highest TMDB popularity first. Falls back to Now Showing when nothing is upcoming, so the hero
+ * never disappears.
+ */
+export async function getHeroMovies(limit = 5) {
+  const now = new Date();
+  const include = { genres: { include: { genre: true } } } as const;
+  const upcoming = await prisma.movie.findMany({
+    where: { isActive: true, releaseDate: { gt: now } },
+    include,
+    orderBy: [{ popularity: "desc" }, { releaseDate: "asc" }],
+    take: limit,
+  });
+  if (upcoming.length > 0) return upcoming;
+  return prisma.movie.findMany({
+    where: { isActive: true, releaseDate: { lte: now }, showtimes: { some: { startsAt: { gte: now } } } },
+    include,
+    orderBy: [{ popularity: "desc" }, { releaseDate: "desc" }],
+    take: limit,
+  });
+}
+
+/**
  * Format raw Prisma movie data into a lightweight MovieItem for catalog and client views.
  */
 type CatalogRawMovie =

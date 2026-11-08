@@ -88,3 +88,31 @@ describe("bulk TMDB sync", () => {
     expect(days).toBeGreaterThanOrEqual(180);
   });
 });
+
+describe("home hero", () => {
+  it("shows the most popular upcoming releases first, never released or hidden ones", async () => {
+    const { getHeroMovies } = await import("@/services/movie.service");
+    const make = (offset: number, popularity: number, releaseDate: string, isActive = true) =>
+      prisma.movie.create({
+        data: {
+          tmdbId: BASE + offset,
+          title: `Hero Test ${offset}`,
+          description: "Test.",
+          duration: 100,
+          releaseDate: new Date(releaseDate),
+          posterUrl: "https://image.tmdb.org/t/p/w500/p.jpg",
+          backdropUrl: "https://image.tmdb.org/t/p/original/b.jpg",
+          popularity,
+          isActive,
+        },
+      });
+    const top = await make(6, 1e9, "2099-03-01");
+    const second = await make(7, 1e9 - 1, "2099-01-01");
+    await make(8, 2e9, "2001-01-01"); // already released: not "upcoming"
+    await make(9, 3e9, "2099-02-01", false); // hidden by an admin
+
+    const hero = await getHeroMovies(5);
+    expect(hero.slice(0, 2).map((m) => m.id)).toEqual([top.id, second.id]);
+    expect(hero).toHaveLength(5);
+  });
+});

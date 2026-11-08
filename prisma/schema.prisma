@@ -84,6 +84,7 @@ model Movie {
   posterUrl   String
   backdropUrl String
   isActive    Boolean      @default(true) // false = hidden from the catalog
+  popularity  Float        @default(0) // TMDB popularity, refreshed by the sync; picks the home hero
   genres      MovieGenre[]
   showtimes   Showtime[]
 }

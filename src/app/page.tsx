@@ -7,7 +7,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isCustomer } from "@/lib/roles";
-import { getNowShowingMovies, getUpcomingMovies } from "@/services/movie.service";
+import { getHeroMovies, getNowShowingMovies, getUpcomingMovies } from "@/services/movie.service";
 import { getMovieRecommendationsMap } from "@/services/recommendation.service";
 import HeroSpotlight from "@/components/movies/HeroSpotlight";
 import MovieCard from "@/components/movies/MovieCard";
@@ -15,10 +15,11 @@ import MovieCard from "@/components/movies/MovieCard";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [session, nowShowingRaw, upcomingRaw] = await Promise.all([
+  const [session, nowShowingRaw, upcomingRaw, heroRaw] = await Promise.all([
     getServerSession(authOptions),
     getNowShowingMovies({ limit: 5 }),
     getUpcomingMovies({ limit: 5 }),
+    getHeroMovies(5),
   ]);
 
   // AI matches are for customers; admin/staff accounts don't book (and shouldn't trigger Gemini)
@@ -30,21 +31,22 @@ export default async function HomePage() {
     ? await getMovieRecommendationsMap(userId, allMovieIds)
     : {};
 
-  // Format Spotlight data for Hero
-  const spotlightMovies = nowShowingRaw.map((m) => {
-    const screens = m.showtimes.map((s) => s.screen.format);
-    const uniqueFormats = Array.from(new Set(screens));
-    return {
-      id: m.id,
-      title: m.title,
-      description: m.description,
-      backdropUrl: m.backdropUrl,
-      posterUrl: m.posterUrl,
-      duration: m.duration,
-      genres: m.genres.map((g) => g.genre.name),
-      formats: uniqueFormats.length > 0 ? uniqueFormats : ["IMAX Laser", "Dolby Cinema"],
-    };
-  });
+  // Hero: the 5 most anticipated upcoming releases (TMDB popularity)
+  const now = new Date();
+  const spotlightMovies = heroRaw.map((m) => ({
+    id: m.id,
+    title: m.title,
+    description: m.description,
+    backdropUrl: m.backdropUrl,
+    posterUrl: m.posterUrl,
+    duration: m.duration,
+    genres: m.genres.map((g) => g.genre.name),
+    // Upcoming: "Opens 17 Dec" (Bangkok date); null = already showing
+    opensLabel:
+      m.releaseDate > now
+        ? m.releaseDate.toLocaleDateString("en-GB", { timeZone: "Asia/Bangkok", day: "numeric", month: "short" })
+        : null,
+  }));
 
   return (
     <main className="flex-1 flex flex-col bg-[#03030d] text-white">

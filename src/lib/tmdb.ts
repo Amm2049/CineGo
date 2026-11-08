@@ -46,6 +46,7 @@ export interface TmdbMovieDetails {
   tagline: string | null;
   status: string;
   original_language?: string; // ISO 639-1, e.g. "en", "th"
+  popularity?: number;
   release_dates?: TmdbReleaseDates; // present when append_to_response=release_dates
 }
 

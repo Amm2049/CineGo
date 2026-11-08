@@ -60,6 +60,7 @@ export interface MovieSyncInput {
   releaseDate: Date;
   posterUrl: string;
   backdropUrl: string;
+  popularity: number;
   genres: string[];
 }
 
@@ -109,6 +110,7 @@ export function mapTmdbToMovieInput(
     releaseDate,
     posterUrl: getTmdbImageUrl(details.poster_path, "w500"),
     backdropUrl: getTmdbImageUrl(details.backdrop_path, "original"),
+    popularity: details.popularity ?? 0,
     genres: Array.from(new Set(details.genres.map((g) => normalizeGenreName(g.name)))),
   };
 }
@@ -151,6 +153,7 @@ export async function upsertMovie(
         releaseDate: data.releaseDate,
         posterUrl: data.posterUrl,
         backdropUrl: data.backdropUrl,
+        popularity: data.popularity, // TMDB-owned, changes daily
       },
       select: { id: true },
     });
