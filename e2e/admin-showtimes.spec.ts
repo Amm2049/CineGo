@@ -29,6 +29,11 @@ test("the form suggests a free time, blocks a clash and offers the next free tim
     await expect(form.locator('input[type="date"]')).toHaveValue(day);
     // Pick Theatre 4 so the test doesn't depend on which movie is first
     await form.getByLabel("Theatre").selectOption({ label: "Theatre 4 · Standard" });
+    // The schedule follows the form's theatre: only Theatre 4 is listed, its chip is pressed
+    const chips = page.getByRole("group", { name: "Show theatre" });
+    await expect(chips.getByRole("button", { name: /^Theatre 4/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("heading", { level: 3 })).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 3, name: /Theatre 4/ })).toBeVisible();
 
     // An empty day: the suggestion is opening time, with no error
     await expect(form.getByLabel("Hour")).toHaveValue("10");
@@ -57,6 +62,11 @@ test("the form suggests a free time, blocks a clash and offers the next free tim
     await expect(form.locator('input[type="date"]')).toHaveValue(bangkokDay(31));
     await page.getByRole("link", { name: "Previous day" }).click();
     await expect(page).toHaveURL(`/admin/showtimes?date=${day}`);
+
+    // "All" lists every theatre again
+    await chips.getByRole("button", { name: /^All/ }).click();
+    await expect(page.getByRole("heading", { level: 3 })).toHaveCount(4);
+    await chips.getByRole("button", { name: /^Theatre 4/ }).click();
 
     // Delete the test show (quiet button, confirm dialog)
     page.once("dialog", (d) => void d.accept());

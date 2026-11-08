@@ -42,6 +42,8 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
   // null = use the suggested free time; set once the admin picks a time themselves
   const [chosenTime, setChosenTime] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Which theatre the schedule shows: "all", or one theatre id (follows the form's Theatre select)
+  const [theatreFilter, setTheatreFilter] = useState<string>("all");
 
   // Moving to another day drops a hand-picked time (React's "adjust state while rendering" pattern)
   const [timeForDay, setTimeForDay] = useState(day);
@@ -172,7 +174,14 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
 
         <label className={labelCls}>
           Theatre
-          <select value={screenId} onChange={(e) => setScreenId(e.target.value)} className={`mt-1 ${inputCls}`}>
+          <select
+            value={screenId}
+            onChange={(e) => {
+              setScreenId(e.target.value);
+              setTheatreFilter(e.target.value); // show that theatre's day while picking a time
+            }}
+            className={`mt-1 ${inputCls}`}
+          >
             {screens.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name} · {s.format}
@@ -276,7 +285,31 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
           </nav>
         </div>
 
-        {screens.map((theatre) => {
+        {/* Theatre filter: on a phone, one theatre's day instead of all four stacked */}
+        <div role="group" aria-label="Show theatre" className="flex flex-wrap gap-2">
+          {[{ id: "all", label: "All" }, ...screens.map((s) => ({ id: s.id, label: s.name }))].map((chip) => {
+            const selected = theatreFilter === chip.id;
+            const count = chip.id === "all" ? showtimes.length : showtimes.filter((s) => s.screenId === chip.id).length;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setTheatreFilter(chip.id)}
+                className={`min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors sm:min-h-9 ${
+                  selected
+                    ? "border-[#5938ff] bg-[#2500f0] text-white"
+                    : "border-white/15 text-zinc-300 hover:border-[#5938ff]/70 hover:bg-white/[0.04]"
+                }`}
+              >
+                {chip.label}
+                <span className={`ml-1.5 text-xs ${selected ? "text-white/75" : "text-zinc-500"}`}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {screens.filter((t) => theatreFilter === "all" || t.id === theatreFilter).map((theatre) => {
           const rows = showtimes.filter((s) => s.screenId === theatre.id);
           return (
             <div key={theatre.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
