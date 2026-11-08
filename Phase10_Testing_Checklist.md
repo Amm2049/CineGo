@@ -167,6 +167,25 @@ Collected while testing; done after the manual checks.
   * Admin Movies → Deactivate shows a confirmation with the number of tickets sold for upcoming showtimes, and says those tickets stay valid.
   * No sold tickets → deactivate right away, as now.
   * *Out of scope:* actually cancelling a show and refunding its tickets (no such feature exists; mention as future work in the report).
+* [ ] **Showtimes page UI/UX** *(review 2026-11-08; P3 ideas — timeline view, searchable movie select, styled delete dialog — kept as future work)*
+  * P1: a clash disables "Create showtime" and shows a red error (not an amber hint), ideally with "Use next free time". The form's default start must not already clash.
+  * P1: the form date and the schedule date stay in sync (picking another date in the form loads that day's schedule; the clash pre-check uses the right day).
+  * P1: past shows dimmed, the current one tagged "Now playing".
+  * P2: "sold" shows capacity (`12 / 60 sold`), maybe a small bar.
+  * P2: quieter delete control, ≥ 44 px tap targets on mobile, disabled reason shown as visible text ("Has bookings"), not only a hover tooltip.
+  * P2: day navigation with ‹ Today › buttons and the weekday ("Sun 8 Nov").
+  * P2: consistent wording ("Theatre" in the form too) and a clear 24-hour time hint.
+* [ ] **Ticket scanner UI/UX** *(review 2026-11-08; P3 ideas — auto-continue after Admit, camera switch, staff fullscreen mode — kept as future work)*
+  * P1: the result covers the camera area while paused, so it is visible without scrolling on a phone.
+  * P1: for Admit, the number of people is prominent: "ADMIT 3 · F4, F5, F6" (one ticket covers the whole booking).
+  * P2: larger camera on desktop and a ready message ("Ready — hold the ticket QR inside the frame") instead of an empty right column.
+  * P2: Recent scans use the human labels and colours, not raw codes like `INVALID_CODE`.
+  * P2: the result message says what to do next instead of repeating the title.
+  * P2: short manual-entry placeholder ("Ticket code") plus help text (the current placeholder is cut off).
+  * P2: a short sound and/or vibration for admit and a different one for reject.
+* [ ] **Recheck admin landing page priority and nav order**
+  * Where admin/staff land after logging in (today: the customer home page `/`; staff → scanner?). Connects to the "admin/staff can't book" item.
+  * Admin nav order (today: Dashboard · Movies · Showtimes · Ticket Scanner): order it by how often each page is used and what matters most on the dashboard; decide whether the site's customer nav (Movies, Experiences, My Tickets) should show for admin/staff at all.
 * [ ] Warnings from section 9 (LCP poster image, `data-scroll-behavior`, next/image width/height) and the pg "client.query() while already executing" warning in the concurrency script.
 
 ---
