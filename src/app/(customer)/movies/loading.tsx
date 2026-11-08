@@ -13,13 +13,13 @@ export default function MoviesLoading() {
         {/* Static header — real text, so the page feels like it has arrived */}
         <header className="mb-10 text-center space-y-3">
           <span className="inline-block text-[11px] uppercase font-bold tracking-widest text-[#a5b4fc] bg-[#2500f0]/20 border border-[#2500f0]/40 px-3.5 py-1 rounded-full">
-            Complete Cinematic Schedule
+            Now Showing & Coming Soon
           </span>
           <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase">
             Film Catalog
           </h1>
           <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto">
-            Select your movie to explore reserved seating layouts, screen technologies, and showtime schedules.
+            Pick a movie to see its showtimes and choose your seats.
           </p>
         </header>
 

@@ -226,8 +226,8 @@ export default function SeatSelectionClient({
 
   const helperText = isSelectionHeld
     ? paymentProvider === "stripe"
-      ? "Pay by scanning a PromptPay QR with any Thai banking app. You get 10 minutes to pay (Stripe test mode — no real money)."
-      : "Simulated payment — no card needed. Your ticket appears right after."
+      ? "Pay by scanning a PromptPay QR with any Thai banking app. You get 10 minutes to pay. Test mode: no real money is charged."
+      : "Test mode: no real money is charged. Your ticket appears right after."
     : heldUntil
       ? "You changed your seats. Re-lock them to continue to payment."
       : selectedSeats.length > 0

@@ -53,7 +53,7 @@ const OUTCOMES: Record<Outcome, { tone: Tone; title: string; label: string; next
     tone: "error",
     title: "Could not verify",
     label: "Error",
-    next: "Scan again, or type the ticket code below.",
+    next: "Scan again, or enter the ticket code instead."
   },
 };
 

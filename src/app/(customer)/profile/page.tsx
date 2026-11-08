@@ -40,7 +40,7 @@ export default async function ProfilePage() {
           user={{
             id: user.id,
             email: user.email,
-            name: user.name || "Cinema Enthusiast",
+            name: user.name || "Not set",
             role: user.role,
             createdAt: user.createdAt.toISOString(),
           }}

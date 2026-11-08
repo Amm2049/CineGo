@@ -123,7 +123,7 @@ export default function QrScanner({ onScan, paused }: Props) {
             >
               Try again
             </button>
-            <span className="text-zinc-400">or type the ticket code below.</span>
+            <span className="text-zinc-400">or use “Enter a code instead”.</span>
           </div>
         </div>
       )}

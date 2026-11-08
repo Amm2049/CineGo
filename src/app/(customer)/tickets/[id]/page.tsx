@@ -36,6 +36,7 @@ export default async function TicketPassPage({
   const timeFormat: Intl.DateTimeFormatOptions = {
     hour: "2-digit",
     minute: "2-digit",
+    hourCycle: "h23", // 24-hour, like the showtime picker
     timeZone: CINEMA_TIME_ZONE, // Vercel servers run in UTC
   };
 
@@ -76,17 +77,17 @@ export default async function TicketPassPage({
             <div className="min-w-0">
               <h1 className="text-xl font-black leading-tight">{ticket.movie.title}</h1>
               <p className="text-sm text-zinc-200 mt-1.5">
-                {startsAt.toLocaleDateString("en-US", {
+                {startsAt.toLocaleDateString("en-GB", {
                   weekday: "short",
-                  month: "short",
                   day: "numeric",
+                  month: "short",
                   year: "numeric",
                   timeZone: CINEMA_TIME_ZONE,
                 })}
               </p>
               <p className="text-sm text-[#c7d2fe]">
-                {startsAt.toLocaleTimeString("en-US", timeFormat)} –{" "}
-                {endsAt.toLocaleTimeString("en-US", timeFormat)}
+                {startsAt.toLocaleTimeString("en-GB", timeFormat)} –{" "}
+                {endsAt.toLocaleTimeString("en-GB", timeFormat)}
               </p>
             </div>
           </div>

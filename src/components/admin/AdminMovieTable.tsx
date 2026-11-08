@@ -105,7 +105,7 @@ export default function AdminMovieTable({ movies, busy, onChanged, onError }: Pr
                   )}
                 </div>
               </td>
-              <td className="px-4 py-3 text-zinc-300">{movie.releaseDate.slice(0, 10)}</td>
+              <td className="px-4 py-3 text-zinc-300">{new Date(movie.releaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" })}</td>
               <td className={`px-4 py-3 ${movie.upcomingShowtimes === 0 ? "text-amber-300" : "text-zinc-300"}`}>
                 {movie.upcomingShowtimes === 0 ? "None scheduled" : movie.upcomingShowtimes}
                 {movie.upcomingTicketsSold > 0 && (

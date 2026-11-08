@@ -30,7 +30,7 @@ function TicketRow({ ticket, isPast }: { ticket: TicketPass; isPast: boolean }) 
         }`}
       >
         <div className="text-[11px] uppercase font-bold tracking-wider">
-          {startsAt.toLocaleDateString("en-US", { month: "short", timeZone: CINEMA_TIME_ZONE })}
+          {startsAt.toLocaleDateString("en-GB", { month: "short", timeZone: CINEMA_TIME_ZONE })}
         </div>
         <div className="text-2xl font-black leading-none mt-0.5">{startsAt.toLocaleDateString("en-US", { day: "numeric", timeZone: CINEMA_TIME_ZONE })}</div>
       </div>
@@ -42,8 +42,8 @@ function TicketRow({ ticket, isPast }: { ticket: TicketPass; isPast: boolean }) 
           {ticket.movie.title}
         </h3>
         <p className="text-sm text-zinc-300 mt-0.5">
-          {startsAt.toLocaleDateString("en-US", { weekday: "short", timeZone: CINEMA_TIME_ZONE })} ·{" "}
-          {startsAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: CINEMA_TIME_ZONE })} ·{" "}
+          {startsAt.toLocaleDateString("en-GB", { weekday: "short", timeZone: CINEMA_TIME_ZONE })} ·{" "}
+          {startsAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: CINEMA_TIME_ZONE })} ·{" "}
           {ticket.showtime.screenName} · {ticket.showtime.screenFormat}
         </p>
         <p className="text-sm text-zinc-400 mt-0.5 truncate">

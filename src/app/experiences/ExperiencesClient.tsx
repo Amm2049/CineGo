@@ -15,134 +15,120 @@ export interface AuditoriumSpec {
   availability: string;
 }
 
+// Facts only: the four theatres and seat prices match prisma/seed.ts. "Elsewhere" formats are not at CineGo.
 export const AUDITORIUM_SPECS: AuditoriumSpec[] = [
   {
     id: "imax",
-    name: "IMAX® with Laser",
+    name: "IMAX with Laser",
     category: "flagship",
-    badge: "Maximum Immersion",
-    spec: "Dual 4K Laser Projection · 1.43:1 Expanded Aspect Ratio",
-    desc: "Experience up to 40% more picture with unparalleled laser sharpness and a custom 12-channel soundstage tuned for visceral physical resonance.",
+    badge: "Biggest picture",
+    spec: "4K laser projection · IMAX 12-channel sound",
+    desc: "A floor-to-ceiling screen with laser projection for a sharp, bright picture. Films shot for IMAX can show up to 40% more image.",
     features: [
-      "Next-Gen 4K Laser Optical Engine",
-      "Sub-bass Transducers in Every Seat",
-      "Floor-to-Ceiling Curved Canvas",
-      "Laser-Aligned Digital Audio",
+      "4K laser projection",
+      "Floor-to-ceiling screen",
+      "IMAX 12-channel sound",
+      "Expanded picture on selected films",
     ],
-    highlight: "Best for Sci-Fi blockbusters and cinematic epics",
-    availability: "Flagship Hall 1",
+    highlight: "Best for big sci-fi and action films",
+    availability: "Theatre 1",
   },
   {
     id: "dolby",
-    name: "Dolby Cinema & Atmos®",
+    name: "Dolby Cinema",
     category: "flagship",
-    badge: "Acoustic & Visual Mastery",
-    spec: "64-Channel Spatial Audio · Dolby Vision Dual 4K HDR",
-    desc: "Individual sound elements flow dynamically above and around you with true obsidian blacks and a 1,000,000:1 dynamic contrast ratio.",
+    badge: "Picture & sound",
+    spec: "Dolby Vision HDR · Dolby Atmos",
+    desc: "Dolby Vision laser projection gives deep blacks and bright highlights, and Dolby Atmos moves sound around and above you.",
     features: [
-      "Object-Based Spatial Sound Elements",
-      "Dual 4K Christie Laser Projectors",
-      "Zero-Spill Matte Black Interior",
-      "Dolby Vision High Dynamic Range",
+      "Dolby Vision HDR laser projection",
+      "Dolby Atmos sound, including overhead",
+      "Deep blacks and high contrast",
     ],
-    highlight: "Best for acoustic mastery and dramatic contrast",
-    availability: "Flagship Hall 2",
+    highlight: "Best for dark, atmospheric films and big soundtracks",
+    availability: "Theatre 2",
   },
   {
     id: "4dx",
-    name: "4DX Motion & Effects",
+    name: "4DX",
     category: "flagship",
-    badge: "Sensory Immersion",
-    spec: "Synchronized Motion Seats · Atmospheric FX",
-    desc: "Step beyond the screen with active motion seats synchronized with on-screen action, wind turbulence, water mist, scents, and strobe flashes.",
+    badge: "Motion & effects",
+    spec: "Motion seats · wind, water, scent, light",
+    desc: "Seats move with the action, while wind, water spray, scents, fog and flashes of light are timed to the film.",
     features: [
-      "3-DOF Hydraulic Motion Simulators",
-      "In-Theater Wind & Rain Simulators",
-      "Dynamic Environmental Scent Delivery",
-      "Lightning & Fog Simulation Systems",
+      "Seats that tilt, rise and shake",
+      "Wind, water spray and fog",
+      "Scents timed to scenes",
+      "Lightning-style flashes",
     ],
-    highlight: "Best for high-octane action and thrillers",
-    availability: "Flagship Hall 3",
+    highlight: "Best for action and adventure films",
+    availability: "Theatre 3",
   },
   {
-    id: "vip",
-    name: "The Director's Lounge",
+    id: "standard",
+    name: "Standard",
+    category: "flagship",
+    badge: "Classic cinema",
+    spec: "Digital projection · surround sound",
+    desc: "Our classic theatre: a big screen, surround sound and the same seat choices as every other theatre.",
+    features: ["Digital projection", "Surround sound", "Same seat tiers and prices as every theatre"],
+    highlight: "Best for dramas, comedies and family films",
+    availability: "Theatre 4",
+  },
+  {
+    id: "seats",
+    name: "Seat tiers",
     category: "vip",
-    badge: "VIP Hospitality",
-    spec: "Motorized Zero-Gravity Recliners · In-Seat Dining",
-    desc: "Curated for uncompromising luxury. Enjoy in-theatre artisanal dining and handcrafted refreshments delivered silently to your personal private pod.",
-    features: [
-      "Heated Italian Leather Recliners",
-      "Acoustic Privacy Isolation Pods",
-      "Call-Button At-Seat Waiter Service",
-      "Artisanal Dining & Champagne Menu",
-    ],
-    highlight: "Best for romantic dates and luxury relaxation",
-    availability: "Private Suites & Lounge",
+    badge: "Every theatre",
+    spec: "VIP ฿280 · Premium ฿200 · Standard ฿150",
+    desc: "Every theatre has 60 seats in rows A–F. The price depends on the row, and you see it on the seat map before you pay.",
+    features: ["VIP: rows A–B, ฿280", "Premium: rows C–D, ฿200", "Standard: rows E–F, ฿150"],
+    highlight: "Pick your exact seats on the live seat map",
+    availability: "Theatres 1–4",
   },
   {
     id: "screenx",
-    name: "ScreenX® 270° Panoramic",
+    name: "ScreenX",
     category: "global",
-    badge: "270° Panoramic Canvas",
-    spec: "Multi-Projection Array · 270° Triple-Wall Immersion",
-    desc: "Expands cinematic storytelling beyond the traditional frame by utilizing the left and right auditorium walls, surrounding your peripheral vision with visual action.",
-    features: [
-      "Multi-Array Laser Projector Blending",
-      "Proprietary Panoramic Color Alignment",
-      "Active Side-Wall Scene Extension",
-      "Synchronized Spatial Surround Tuning",
-    ],
-    highlight: "Best for aerial sequences, speed chases, and wide spectacles",
-    availability: "Global Benchmark",
+    badge: "270° picture",
+    spec: "Picture on three walls",
+    desc: "In selected scenes the picture extends onto the left and right walls, so it surrounds you on three sides.",
+    features: ["Front screen plus both side walls", "Used for selected scenes", "Needs films made for ScreenX"],
+    highlight: "Great for chases and flying scenes",
+    availability: "Not at CineGo",
   },
   {
     id: "onyx",
-    name: "Samsung Onyx® Cinema LED",
+    name: "Samsung Onyx Cinema LED",
     category: "global",
-    badge: "Direct-View Quantum LED",
-    spec: "4K DCI-Compliant Active LED · True Infinite Contrast",
-    desc: "Eliminates traditional projection entirely with self-illuminating cinema LED modules. Delivers true 0-nit obsidian blacks, 300 nits peak HDR brightness, and distortion-free geometry.",
-    features: [
-      "100% DCI-P3 Color Accuracy",
-      "Infinite Contrast Ratio (0.0005 to 300+ nits)",
-      "Meyer Sound / JBL Sculpted Audio Array",
-      "Active 3D Without Dimming or Crosstalk",
-    ],
-    highlight: "Best for ultra-sharp HDR visual masterpieces",
-    availability: "Global Benchmark",
+    badge: "LED screen",
+    spec: "Self-lit LED screen · no projector",
+    desc: "The screen lights itself, like a giant TV, so blacks are truly black and the picture stays bright and sharp from edge to edge.",
+    features: ["No projector", "True black", "HDR brightness"],
+    highlight: "Best for HDR picture quality",
+    availability: "Not at CineGo",
   },
   {
     id: "thx",
-    name: "THX® Ultimate Cinema",
+    name: "THX Certified Cinema",
     category: "global",
-    badge: "Studio Audio Reference",
-    spec: "NC-30 Acoustic Isolation · Dual 4K Laser Projection",
-    desc: "The legendary acoustic standard founded by George Lucas. Every architectural baffle, acoustic dampening panel, and speaker crossover is calibrated to match Hollywood studio dubbing stages.",
-    features: [
-      "NC-30 Architectural Noise Criterion",
-      "Precision RT60 Reverberation Tuning",
-      "Floating Wall Acoustic Isolation",
-      "Baffle-Mounted Sub-Bass Line Arrays",
-    ],
-    highlight: "Best for audiophiles and master orchestral scores",
-    availability: "Global Benchmark",
+    badge: "Sound standard",
+    spec: "Certified sound and picture",
+    desc: "THX, created at Lucasfilm in 1983, certifies cinemas that meet strict standards for sound, background noise and picture.",
+    features: ["Very low background noise", "Calibrated speakers and screen", "Regular re-certification"],
+    highlight: "Best for listeners who care about sound",
+    availability: "Not at CineGo",
   },
   {
     id: "dbox",
-    name: "D-BOX® Haptic Motion",
+    name: "D-BOX Motion Seats",
     category: "global",
-    badge: "Micro-Telemetry Haptics",
-    spec: "Sub-Millimeter Actuators · Studio-Coded Telemetry",
-    desc: "Hollywood studio directors program frame-by-frame motion code into the film, transmitting true physical G-forces, subtle engine vibrations, and spatial pitch directly through the seat.",
-    features: [
-      "Sub-Millimeter Precision Actuators",
-      "Studio Direct Telemetry Encoding",
-      "Pitch, Roll & Heave Motion Dynamics",
-      "Individual Intensity Controller",
-    ],
-    highlight: "Best for racing films, flight sims, and visceral action",
-    availability: "Global Benchmark",
+    badge: "Motion seats",
+    spec: "Seats move with the film",
+    desc: "Motion designers code each film scene by scene, so the seat pitches, rolls and vibrates with the action. Each seat has its own intensity setting.",
+    features: ["Pitch, roll and vibration", "Coded for each film", "Adjustable intensity per seat"],
+    highlight: "Best for racing and action films",
+    availability: "Not at CineGo",
   },
 ];
 
@@ -184,7 +170,7 @@ export default function ExperiencesClient() {
                 : "text-zinc-400 hover:text-white"
             }`}
           >
-            <span>All Standards</span>
+            <span>All</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/40 text-white/90">
               {AUDITORIUM_SPECS.length}
             </span>
@@ -199,9 +185,9 @@ export default function ExperiencesClient() {
                 : "text-zinc-400 hover:text-white"
             }`}
           >
-            <span>🍿 CineGo Flagship</span>
+            <span>🍿 At CineGo</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/40 text-white/90">
-              4
+              {AUDITORIUM_SPECS.filter((x) => x.category !== "global").length}
             </span>
           </button>
 
@@ -214,9 +200,9 @@ export default function ExperiencesClient() {
                 : "text-zinc-400 hover:text-white"
             }`}
           >
-            <span>🌐 Global Showcase</span>
+            <span>🌐 Elsewhere</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/40 text-white/90">
-              4
+              {AUDITORIUM_SPECS.filter((x) => x.category === "global").length}
             </span>
           </button>
         </div>
@@ -225,7 +211,7 @@ export default function ExperiencesClient() {
         <div className="w-full sm:w-72">
           <input
             type="text"
-            placeholder="Search technology, audio, or display..."
+            placeholder="Search formats, e.g. Atmos"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full text-xs bg-[#070820] border border-white/15 focus:border-[#5938ff] rounded-xl px-3.5 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#5938ff]"
@@ -236,8 +222,8 @@ export default function ExperiencesClient() {
       {/* Experience Showcase Cards (3 Columns Layout) */}
       {filteredSpecs.length === 0 ? (
         <div className="glass-panel rounded-2xl p-12 text-center space-y-2">
-          <p className="text-zinc-300 font-semibold text-sm">No cinema standards found.</p>
-          <p className="text-zinc-500 text-xs">Try adjusting your search query.</p>
+          <p className="text-zinc-300 font-semibold text-sm">No formats match your search.</p>
+          <p className="text-zinc-500 text-xs">Try another word.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -269,10 +255,10 @@ export default function ExperiencesClient() {
                 {/* Description */}
                 <p className="text-xs text-[#e2e8f0] leading-relaxed">{spec.desc}</p>
 
-                {/* Key Specifications List */}
+                {/* What you get */}
                 <div className="space-y-2 pt-1">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-white/70">
-                    Key Specifications
+                    What you get
                   </div>
                   <ul className="space-y-1.5">
                     {spec.features.map((feat) => (

@@ -157,7 +157,7 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
             className={`mt-1 ${inputCls}`}
           />
           <span className="mt-1 block text-[11px] normal-case tracking-normal text-zinc-500">
-            {formatCinemaDate(day)} · the schedule shows the same day
+            {formatCinemaDate(day)} · the schedule below shows this day
           </span>
         </label>
 

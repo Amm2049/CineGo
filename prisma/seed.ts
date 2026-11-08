@@ -119,8 +119,7 @@ async function main() {
     'Music',
     'Mystery',
     'Romance',
-    'Sci-Fi',
-    'Science Fiction',
+    'Sci-Fi', // TMDB's "Science Fiction" is saved as Sci-Fi (normalizeGenreName)
     'Thriller',
     'War',
     'Western',
@@ -133,8 +132,9 @@ async function main() {
       console.log('🌐 Fetching official genre taxonomy from TMDB API...');
       const tmdbGenres = await getTmdbGenres();
       for (const g of tmdbGenres) {
-        if (!standardGenres.includes(g.name)) {
-          standardGenres.push(g.name);
+        const name = g.name === 'Science Fiction' ? 'Sci-Fi' : g.name;
+        if (!standardGenres.includes(name)) {
+          standardGenres.push(name);
         }
       }
     } catch {

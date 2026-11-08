@@ -65,10 +65,11 @@ export default function ProfileClient({
     }
   };
 
-  const formattedJoinDate = new Date(user.createdAt).toLocaleDateString("en-US", {
-    month: "long",
+  const formattedJoinDate = new Date(user.createdAt).toLocaleDateString("en-GB", {
     day: "numeric",
+    month: "long",
     year: "numeric",
+    timeZone: "Asia/Bangkok",
   });
 
   return (
@@ -100,13 +101,6 @@ export default function ProfileClient({
           </div>
 
           <div className="bg-black/40 p-3.5 rounded-xl border border-white/10">
-            <span className="text-zinc-400 block text-[11px] mb-1">Membership Role</span>
-            <span className="font-bold text-emerald-400 uppercase tracking-wider text-xs">
-              {user.role}
-            </span>
-          </div>
-
-          <div className="bg-black/40 p-3.5 rounded-xl border border-white/10">
             <span className="text-zinc-400 block text-[11px] mb-1">Member Since</span>
             <span className="font-bold text-white text-xs">{formattedJoinDate}</span>
           </div>
@@ -119,12 +113,9 @@ export default function ProfileClient({
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-[#a5b4fc] flex items-center gap-2">
               <span>Favorite Movie Genres</span>
-              <span className="text-[11px] text-amber-400 font-semibold lowercase">
-                (powers Phase 5 AI engine)
-              </span>
             </h2>
             <p className="text-xs text-zinc-300 mt-0.5">
-              Click genres you love. Selected: {selectedIds.length}
+              Pick the genres you love. They set your AI match scores on movie cards. Selected: {selectedIds.length}
             </p>
           </div>
         </div>

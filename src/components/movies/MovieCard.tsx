@@ -18,9 +18,11 @@ export default function MovieCard({
   isUpcoming = false,
   priority = false,
 }: MovieCardProps) {
-  const formattedDate = new Date(releaseDate).toLocaleDateString("en-US", {
-    month: "short",
+  // "12 Nov", Bangkok date (same style as the hero and the showtime picker)
+  const formattedDate = new Date(releaseDate).toLocaleDateString("en-GB", {
     day: "numeric",
+    month: "short",
+    timeZone: "Asia/Bangkok",
   });
 
   // Every card opens the movie page, where customers pick a date, time and theatre
