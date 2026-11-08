@@ -107,6 +107,7 @@ Log in as **admin** in the incognito window.
 * [ ] **Movies:** search TMDB and import one title → it appears in the list; importing it again doesn't create a duplicate.
 * [ ] **Movies:** edit a title → shown on `/movies`; run the TMDB sync → your edited title is **not** overwritten.
 * [ ] **Movies:** deactivate a movie → it disappears from `/` and `/movies`; reactivate → it's back.
+* [ ] **Movies:** a customer bought a ticket for a movie, then you deactivate it → the ticket is still in their My Tickets and still scans. Also try booking that movie from a seat map that was already open (known gap, in the step 4 list; note what happens).
 * [ ] **Showtimes:** add a showtime → appears in the schedule and on the movie's page for customers.
 * [ ] **Showtimes:** add one that overlaps another in the same theatre (including the 25-min cleaning gap) → refused with a clear message.
 * [ ] **Showtimes:** delete a showtime without bookings → removed; try deleting one **with** bookings → refused.
@@ -156,6 +157,16 @@ Collected while testing; done after the manual checks.
   * UI: hide "Book"/seat-selection links and the customer menu items for admin/staff; after login, send admin/staff straight to `/admin` (staff → scanner).
   * Browsing `/`, `/movies`, `/experiences` stays open to every role.
   * Add e2e tests: admin and staff are redirected from checkout and get 403 from the booking APIs.
+* [ ] **Hidden (deactivated) movies can't be sold** *(found 2026-11-08: deactivate only removes the movie from the listings; checkout, seat holds and payments don't check `Movie.isActive`, so an open seat map, an open QR or a saved `/checkout/<id>` link still sells tickets)*
+  * Tickets already bought stay valid: My Tickets and the scanner keep working (don't change this).
+  * Seat map for a hidden movie's showtime shows "This movie is no longer on sale" instead of the seat grid.
+  * Server refuses new seat holds (`holdShowtimeSeats()`) and new payments (`startStripePayment()`, `confirmBookingPayment()`) when the movie is inactive.
+  * A PromptPay payment that was already open may still finish (the customer may have scanned already; blocking it would only cause a refund).
+  * Tests: a hold and a payment start for an inactive movie are refused; an open payment still settles.
+* [ ] **Confirm before deactivating a movie with sold tickets**
+  * Admin Movies → Deactivate shows a confirmation with the number of tickets sold for upcoming showtimes, and says those tickets stay valid.
+  * No sold tickets → deactivate right away, as now.
+  * *Out of scope:* actually cancelling a show and refunding its tickets (no such feature exists; mention as future work in the report).
 * [ ] Warnings from section 9 (LCP poster image, `data-scroll-behavior`, next/image width/height) and the pg "client.query() while already executing" warning in the concurrency script.
 
 ---
