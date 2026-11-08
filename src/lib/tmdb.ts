@@ -158,6 +158,28 @@ export async function getUpcomingMovies(
   });
 }
 
+/**
+ * English-language films with a THAI cinema release (theatrical or limited) between `from` and `to`
+ * ("YYYY-MM-DD"), most popular first. With `region`, TMDB applies the date range to that country's
+ * release dates. Reaches further ahead than /movie/upcoming, which only covers the next few weeks.
+ */
+export async function discoverUpcomingInThailand(
+  page: number,
+  window: { from: string; to: string }
+): Promise<TmdbPaginatedResponse<TmdbMovieSummary>> {
+  return tmdbFetch<TmdbPaginatedResponse<TmdbMovieSummary>>("/discover/movie", {
+    page,
+    language: "en-US",
+    region: TMDB_REGION,
+    with_release_type: "2|3", // limited | theatrical (no digital/TV)
+    "release_date.gte": window.from,
+    "release_date.lte": window.to,
+    with_original_language: "en",
+    sort_by: "popularity.desc",
+    include_adult: "false",
+  });
+}
+
 export async function getTmdbGenres(): Promise<TmdbGenre[]> {
   const data = await tmdbFetch<{ genres: TmdbGenre[] }>("/genre/movie/list", {
     language: "en-US",

@@ -3,10 +3,11 @@
 // Import TMDB helpers from @/lib/tmdb only: movie.service.ts also has a getUpcomingMovies (DB query).
 
 import prisma from "@/lib/prisma";
+import { addCinemaDays, todayInCinemaTz } from "@/lib/schedule";
 import {
+  discoverUpcomingInThailand,
   getMovieDetails,
   getNowPlayingMovies,
-  getUpcomingMovies,
   getTmdbImageUrl,
   hasTmdbCredentials,
   searchMovies,
@@ -15,8 +16,10 @@ import {
   type TmdbMovieSummary,
 } from "@/lib/tmdb";
 
-export const NOW_SHOWING_TARGET = 10;
-export const UPCOMING_TARGET = 20;
+export const NOW_SHOWING_TARGET = 20;
+export const UPCOMING_TARGET = 40;
+/** How far ahead the upcoming list looks (Thai cinema release dates). */
+export const UPCOMING_WINDOW_DAYS = 183; // ~6 months
 /** The bulk sync keeps English-language films only (US, UK, ... still with their THAI release dates). */
 export const SYNC_ORIGINAL_LANGUAGE = "en";
 /** TMDB list pages to read per list while filling the targets (20 titles per page). */
@@ -188,6 +191,8 @@ export interface SyncSummary {
   created: number;
   updated: number;
   failed: number;
+  /** Upcoming candidates dropped because their Thai cinema date is not in the future (re-releases). */
+  skipped: number;
   errors: string[];
   startedAt: string;
   finishedAt: string;
@@ -210,7 +215,10 @@ function reasonOf(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
 
-/** Fetch 10 now playing + 20 upcoming English-language titles in Thai cinemas and upsert them all. */
+/**
+ * Fetch up to 20 now playing + 40 upcoming English-language titles in Thai cinemas and upsert them.
+ * Upcoming uses TMDB Discover (Thai release in the next ~6 months), not the short /movie/upcoming list.
+ */
 export async function syncLatestReleases(): Promise<SyncSummary> {
   if (!hasTmdbCredentials()) {
     throw new Error("TMDB credentials are not configured");
@@ -220,7 +228,13 @@ export async function syncLatestReleases(): Promise<SyncSummary> {
   // English-language titles only; a title in both lists is fetched once (shared `seen`)
   const seen = new Set<number>();
   const nowPlayingIds = await collectEnglishTitles(getNowPlayingMovies, NOW_SHOWING_TARGET, seen);
-  const upcomingIds = await collectEnglishTitles(getUpcomingMovies, UPCOMING_TARGET, seen);
+  const tomorrow = addCinemaDays(todayInCinemaTz(startedAt), 1);
+  const upcomingWindow = { from: tomorrow, to: addCinemaDays(tomorrow, UPCOMING_WINDOW_DAYS) };
+  const upcomingIds = await collectEnglishTitles(
+    (page) => discoverUpcomingInThailand(page, upcomingWindow),
+    UPCOMING_TARGET,
+    seen
+  );
   const ids = [...nowPlayingIds, ...upcomingIds];
 
   const summary: SyncSummary = {
@@ -228,6 +242,7 @@ export async function syncLatestReleases(): Promise<SyncSummary> {
     created: 0,
     updated: 0,
     failed: 0,
+    skipped: 0,
     errors: [],
     startedAt: startedAt.toISOString(),
     finishedAt: "",
@@ -238,7 +253,14 @@ export async function syncLatestReleases(): Promise<SyncSummary> {
   const inputs: MovieSyncInput[] = [];
   fetched.forEach((result, i) => {
     if (result.status === "fulfilled") {
-      inputs.push(mapTmdbToMovieInput(result.value, startedAt));
+      const input = mapTmdbToMovieInput(result.value, startedAt);
+      // Discover also returns re-releases (e.g. a 1997 film back in cinemas): their earliest Thai
+      // cinema date is in the past, so they are not "upcoming". Skip them rather than fake a date.
+      if (i >= nowPlayingIds.length && input.releaseDate <= startedAt) {
+        summary.skipped++;
+        return;
+      }
+      inputs.push(input);
     } else {
       summary.failed++;
       summary.errors.push(`tmdbId ${ids[i]}: ${reasonOf(result.reason)}`);

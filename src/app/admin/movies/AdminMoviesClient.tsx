@@ -47,7 +47,8 @@ export default function AdminMoviesClient({ movies, tmdbConfigured }: Props) {
       const s: SyncSummary = data.summary;
       push(
         s.failed > 0 ? "error" : "success",
-        `Synced ${s.total} titles: ${s.created} new, ${s.updated} updated` +
+        `Synced ${s.created + s.updated} titles: ${s.created} new, ${s.updated} updated` +
+          (s.skipped > 0 ? `, ${s.skipped} re-releases skipped` : "") +
           (s.failed > 0 ? `, ${s.failed} failed` : "")
       );
       refresh();
