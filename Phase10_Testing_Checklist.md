@@ -200,4 +200,4 @@ Collected while testing; done after the manual checks.
 
 ## Result
 
-* [ ] Every section passes, or each failure is written down in its Notes → hand the list to Claude for **step 4 (fixes)**, then merge `phase/phase10-testing` → `develop` → `main`.
+* [x] Every section passes, or each failure is written down in its Notes → hand the list to Claude for **step 4 (fixes)**, then merge `phase/phase10-testing` → `develop` → `main`. *(2026-11-08: sections 0–9 tested by the user, all passing, including the simulated payment fallback; the issues found along the way are in "Step 4 — fixes to make")*

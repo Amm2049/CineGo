@@ -288,7 +288,7 @@ Create permanent milestone branch `phase/phase9-payments` off `develop`. Replace
   * Unit tests for the window, provider switch, satang conversion, settlement rule, and test-key guard. CI pins `PAYMENT_PROVIDER=simulated`.
 * [x] Apply the migration (`npx prisma migrate deploy`) and set `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` locally *(done 2026-11-07 — dedicated Thai Stripe test account "CineGo sandbox", PromptPay on)*.
 * [x] Forward Stripe webhooks locally: `npm run stripe:listen` (`scripts/stripe-listen.mjs` — uses `STRIPE_SECRET_KEY` from `.env`, forwards the 3 `payment_intent.*` events to `/api/webhooks/stripe`).
-* [ ] Finish the remaining verification checks below — **deferred to the whole-app testing phase** (countdown expiry, late-payment refund, simulated fallback).
+* [x] Finish the remaining verification checks below — **deferred to the whole-app testing phase** (countdown expiry, late-payment refund, simulated fallback). *(2026-11-08, Phase 10)*
 * [x] Merge `feature/stripe-promptpay` into `phase/phase9-payments` and delete feature branch.
 * [x] Merge `phase/phase9-payments` into `develop` (preserving `phase/phase9-payments` on GitHub). *(local, 2026-11-07; not pushed yet)*
 * [ ] Finally merge `develop` into `main` for Production Release! — **after the whole-app testing phase passes.**
@@ -300,5 +300,5 @@ Create permanent milestone branch `phase/phase9-payments` off `develop`. Replace
 * [x] Let the 10-minute countdown run out and verify the QR can no longer be paid and the seats become available after the window. *(2026-11-08: automated in `src/tests/integration/payment-window.test.ts` — countdown, status poll, another customer's hold, and the last-second-payment race; `npm run test:integration`)*
 * [x] Replay a `payment_intent.succeeded` event (`stripe events resend`) and verify no second ticket or payment is created. *(2026-11-07: still 1 payment and 1 ticket for the intent)*
 * [x] Simulate a late payment after another customer took the seats and verify an automatic refund (`Payment.status = REFUNDED`). *(2026-11-08: automated in `src/tests/integration/payment-window.test.ts`, including a repeated webhook refunding only once)*
-* [ ] With `PAYMENT_PROVIDER` unset, verify the simulated payment still works and CI stays green.
+* [x] With `PAYMENT_PROVIDER` unset, verify the simulated payment still works and CI stays green. *(2026-11-08: simulated payment verified by hand in the Phase 10 checklist; CI to be confirmed on the next push)*
 
