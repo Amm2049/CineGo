@@ -1,0 +1,151 @@
+# CineGo — Phase 10: Whole-App Manual Testing Checklist
+
+Step 3 of the testing phase. Steps 1–2 (all automated checks, plus the payment-window and late-refund
+integration tests) are already done on `phase/phase10-testing`.
+
+**How to use:** work top to bottom, tick `[x]` when a check passes. When something fails, leave it
+unticked and write what happened under **Notes** next to it (what you clicked, what you saw, what you
+expected). We fix everything in step 4.
+
+---
+
+## 0. Setup
+
+* [ ] `.env` has `PAYMENT_PROVIDER=stripe` (we switch it to the simulated payment in section 8).
+* [ ] Terminal 1: `npm run dev` → open http://localhost:3000
+* [ ] Terminal 2: `npm run stripe:listen` (never a plain `stripe listen`: the CLI login points at another account).
+* [ ] Two browser windows that don't share cookies: a **normal window** (Customer A) and an **incognito window** (Customer B / admin).
+* [ ] Keep the browser DevTools **Console** open in the normal window and note any red errors you see along the way.
+
+Test accounts: `admin@cinego.com` / `admin123`, `staff@cinego.com` / `staff123`. Customers: register new ones below.
+
+---
+
+## 1. Guest browsing (logged out)
+
+* [ ] `/` loads: hero spotlight, movie cards with posters, no broken images.
+* [ ] `/movies` shows **Now Showing** and **Upcoming** separately. Upcoming movies have a release date in the future; Now Showing ones have showtimes.
+* [ ] Format badges on movie cards show a projection format (e.g. "IMAX Laser"), not a theatre name ("Theatre 1").
+* [ ] `/experiences` loads and explains IMAX, Dolby, 4DX and VIP.
+* [ ] Showtimes are shown in Thai time (compare one with the admin schedule later).
+* [ ] Clicking a showtime as a guest asks you to log in (it doesn't crash or show an empty seat map).
+* [ ] Opening `/tickets`, `/profile` or `/admin` as a guest redirects to the login page.
+* [ ] Phone width (DevTools device toolbar, ~390 px): navbar, movie grid and login page are usable, with no sideways scrolling.
+
+Notes:
+
+---
+
+## 2. Register, log in, log out
+
+* [ ] Register **Customer A** with a new email → you land on `/` already logged in (name/menu in the navbar).
+* [ ] Register with the **same email** again → clear error, no crash.
+* [ ] Register with mismatched passwords / a password under 8 characters → clear error.
+* [ ] Log out → navbar shows Sign In again.
+* [ ] Log in with a wrong password → "Invalid email or password".
+* [ ] Log in correctly → you land on `/` logged in. *(This is the flow fixed in step 1, so try it a few times, including in a fresh incognito window.)*
+
+Notes:
+
+---
+
+## 3. Interests and AI recommendations (Gemini)
+
+* [ ] `/profile`: pick a few genres, save → success message; reload → the same genres are still selected.
+* [ ] `/` and `/movies` now show glowing **🔥 AI Match** badges on some cards, with a sensible reason.
+* [ ] Pages stay fast while recommendations refresh (no 20+ second load — fixed in Phase 9).
+* [ ] Change your genres → after a reload, the matches change.
+
+Notes:
+
+---
+
+## 4. Seat map and holds (Customer A)
+
+* [ ] Open a showtime's checkout page: screen curve, legend and seat grid render.
+* [ ] Prices by row: **A–B VIP ฿280**, **C–D Premium ฿200**, **E–F Standard ฿150**. The total updates as you select and deselect.
+* [ ] Selecting seats starts a **5-minute hold timer**.
+* [ ] In the incognito window, log in as **Customer B** (register one) and open the same showtime: A's seats show as **held** within ~5 seconds (live polling) and can't be selected.
+* [ ] A deselects a seat → within ~5 seconds it becomes available for B.
+* [ ] Let A's 5-minute timer run out → A's seats are released and B can take them.
+* [ ] Both A and B click the **same free seat** at about the same time → only one of them gets it, the other sees a clear message.
+
+Notes:
+
+---
+
+## 5. PromptPay payment — happy path (Customer A)
+
+* [ ] Select 2 seats → **Pay with PromptPay** → QR code, amount = seat total, and a **10-minute countdown**.
+* [ ] Reload the page → the same QR and countdown come back (not a new payment, and the countdown doesn't restart).
+* [ ] Open the test-mode link → Stripe's hosted page → **Authorize** → within ~3 seconds you are sent to the ticket.
+* [ ] Terminal 2 shows `payment_intent.succeeded` forwarded with a 200 response.
+* [ ] Ticket page: movie, showtime (Thai time), theatre, seats, total and a **QR code**.
+* [ ] `/tickets` lists it under **Upcoming**.
+* [ ] B (incognito) now sees those seats as **booked**.
+
+Notes:
+
+---
+
+## 6. PromptPay — cancel, fail, countdown
+
+* [ ] Start a payment, press **Cancel payment** → seats released with a clear message; B can take them.
+* [ ] Start a payment, on Stripe's page choose **Fail** → clear message, seats released, no ticket.
+* [ ] Start a payment and let the **10-minute countdown reach 0** → clear message, QR gone; the seats become free for B. *(Automated in step 2; this checks what the customer actually sees.)*
+* [ ] While a payment is open, try to change seats → it is refused with "payment in progress".
+
+Notes:
+
+---
+
+## 7. Admin and staff
+
+Log in as **admin** in the incognito window.
+
+* [ ] `/admin` dashboard: numbers look right, with **Recent payments** (including A's payment from section 5) and **Recent scans**.
+* [ ] **Movies:** search TMDB and import one title → it appears in the list; importing it again doesn't create a duplicate.
+* [ ] **Movies:** edit a title → shown on `/movies`; run the TMDB sync → your edited title is **not** overwritten.
+* [ ] **Movies:** deactivate a movie → it disappears from `/` and `/movies`; reactivate → it's back.
+* [ ] **Showtimes:** add a showtime → appears in the schedule and on the movie's page for customers.
+* [ ] **Showtimes:** add one that overlaps another in the same theatre (including the 25-min cleaning gap) → refused with a clear message.
+* [ ] **Showtimes:** delete a showtime without bookings → removed; try deleting one **with** bookings → refused.
+* [ ] **Scanner (webcam):** allow the camera, show A's ticket QR (phone photo of the screen, or a second screen):
+  * if the show starts **more than 60 min from now** → "Entry opens 60 minutes before…" (TOO_EARLY), ticket not used;
+  * to test admission, buy a ticket for a showtime that starts within the next hour (add one in Showtimes if needed) → **ADMITTED**; scan again → **ALREADY_USED**.
+* [ ] **Scanner (manual):** type the ticket code by hand → same result as the QR; type `hello` → "This is not a CineGo ticket"; a random UUID → "No ticket exists".
+* [ ] After admitting, the ticket shows as used for the customer, and it appears in the dashboard's Recent scans.
+* [ ] Log in as **staff**: the scanner works, but `/admin`, Movies and Showtimes are not accessible.
+* [ ] As **Customer A**, opening `/admin` is refused.
+
+Notes:
+
+---
+
+## 8. Simulated payment fallback (last deferred Phase 9 check)
+
+* [ ] Stop `npm run dev`, set `PAYMENT_PROVIDER=simulated` in `.env` (or remove the line), start `npm run dev` again.
+* [ ] As Customer A, select seats → pay → the booking completes with **no** PromptPay QR and **no** Stripe call, and a ticket is issued.
+* [ ] The ticket and `/tickets` look the same as with Stripe.
+* [ ] Set `PAYMENT_PROVIDER=stripe` back and restart `npm run dev`.
+
+Notes:
+
+---
+
+## 9. Small items saved from earlier
+
+Check the DevTools Console / terminal and note whether these still appear:
+
+* [ ] Warning about the first poster image being the LCP image (`loading="eager"` / priority).
+* [ ] Warning about `data-scroll-behavior="smooth"` on `<html>`.
+* [ ] next/image warning: a TMDB poster "has either width or height modified, but not the other".
+* [ ] Any other red errors seen during sections 1–8 (list them in Notes).
+
+Notes:
+
+---
+
+## Result
+
+* [ ] Every section passes, or each failure is written down in its Notes → hand the list to Claude for **step 4 (fixes)**, then merge `phase/phase10-testing` → `develop` → `main`.
