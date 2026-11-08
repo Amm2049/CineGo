@@ -66,6 +66,33 @@ export default async function SeatSelectionPage({
       ? await getOpenPromptPayCheckout(session.user.id, showtimeId)
       : null;
 
+  // Hidden movie: off sale. A customer whose PromptPay payment was already open may still finish it.
+  if (!initialData.showtime.movie.isActive && !initialCheckout) {
+    return (
+      <main className="min-h-screen bg-[#02020a] text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-md rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center">
+          <p className="text-3xl" aria-hidden>🎬</p>
+          <h1 className="mt-3 text-xl font-black">This movie is no longer on sale</h1>
+          <p className="mt-2 text-sm text-zinc-300">
+            <span className="font-semibold">{initialData.showtime.movie.title}</span> can&apos;t be booked any more.
+            Tickets that were already bought are still valid.
+          </p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Link href="/movies" className="btn-cobalt rounded-xl px-5 py-2.5 text-sm font-bold">
+              Browse movies
+            </Link>
+            <Link
+              href="/tickets"
+              className="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-white/[0.06]"
+            >
+              My Tickets
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#02020a] text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8">
       <SeatSelectionClient

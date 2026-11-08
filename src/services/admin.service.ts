@@ -9,12 +9,27 @@ import { CINEMA_UTC_OFFSET, todayInCinemaTz } from "@/lib/schedule";
 
 export async function listAdminMovies() {
   const now = new Date();
-  const movies = await prisma.movie.findMany({
-    orderBy: [{ isActive: "desc" }, { releaseDate: "desc" }],
-    include: {
-      _count: { select: { showtimes: { where: { startsAt: { gte: now } } } } },
-    },
-  });
+  const [movies, paidUpcoming] = await Promise.all([
+    prisma.movie.findMany({
+      orderBy: [{ isActive: "desc" }, { releaseDate: "desc" }],
+      include: {
+        _count: { select: { showtimes: { where: { startsAt: { gte: now } } } } },
+      },
+    }),
+    // Paid bookings for shows that haven't started: what deactivating a movie would affect
+    prisma.booking.findMany({
+      where: { status: "PAID", showtime: { startsAt: { gte: now } } },
+      select: { showtime: { select: { movieId: true } }, _count: { select: { seats: true } } },
+    }),
+  ]);
+
+  const sold = new Map<string, { tickets: number; seats: number }>();
+  for (const b of paidUpcoming) {
+    const entry = sold.get(b.showtime.movieId) ?? { tickets: 0, seats: 0 };
+    entry.tickets += 1; // one ticket (QR) per booking
+    entry.seats += b._count.seats;
+    sold.set(b.showtime.movieId, entry);
+  }
 
   // Plain JSON for client components
   return movies.map((m) => ({
@@ -27,6 +42,8 @@ export async function listAdminMovies() {
     duration: m.duration,
     isActive: m.isActive,
     upcomingShowtimes: m._count.showtimes,
+    upcomingTicketsSold: sold.get(m.id)?.tickets ?? 0,
+    upcomingSeatsSold: sold.get(m.id)?.seats ?? 0,
   }));
 }
 

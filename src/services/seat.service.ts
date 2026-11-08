@@ -2,6 +2,7 @@
 // CineGo — Domain service for Seat availability, 5-minute atomic holds, and layout mapping
 
 import { Prisma } from "@prisma/client";
+import { MOVIE_NOT_ON_SALE } from "@/lib/movie-sales";
 import prisma from "@/lib/prisma";
 import { SeatLayoutItem, SeatTier, ShowtimeSeatMapResponse } from "@/types";
 
@@ -135,6 +136,7 @@ export async function getShowtimeSeatMap(
         posterUrl: showtime.movie.posterUrl,
         duration: showtime.movie.duration,
         genres: showtime.movie.genres.map((g) => g.genre.name),
+        isActive: showtime.movie.isActive,
       },
       screen: {
         id: showtime.screen.id,
@@ -180,11 +182,14 @@ export async function holdShowtimeSeats(params: {
     return await prisma.$transaction(async (tx) => {
       const showtime = await tx.showtime.findUnique({
         where: { id: showtimeId },
-        select: { screenId: true },
+        select: { screenId: true, movie: { select: { isActive: true } } },
       });
 
       if (!showtime) {
         return { success: false, error: "Showtime not found" };
+      }
+      if (!showtime.movie.isActive) {
+        return { success: false, error: MOVIE_NOT_ON_SALE }; // hidden by an admin: off sale
       }
 
       // 1. Fetch requested seats to calculate total (only seats in this showtime's screen)

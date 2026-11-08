@@ -5,6 +5,7 @@
 // PromptPay path lives in payment.service.ts and reaches PAID only via settleSucceededPayment().
 
 import { randomUUID } from "crypto";
+import { MOVIE_NOT_ON_SALE } from "@/lib/movie-sales";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { createTicketForBooking } from "@/services/ticket.service";
@@ -37,7 +38,7 @@ export async function confirmBookingPayment(params: {
         const booking = await tx.booking.findFirst({
           where: { showtimeId, userId, status: "PENDING" },
           include: {
-            showtime: { select: { startsAt: true } },
+            showtime: { select: { startsAt: true, movie: { select: { isActive: true } } } },
             seats: { include: { seat: true } },
             payment: { select: { id: true } },
           },
@@ -58,6 +59,10 @@ export async function confirmBookingPayment(params: {
 
         if (booking.showtime.startsAt <= now) {
           return { success: false, error: "This showtime has already started.", status: 409 };
+        }
+
+        if (!booking.showtime.movie.isActive) {
+          return { success: false, error: MOVIE_NOT_ON_SALE, status: 409 };
         }
 
         const hasExpiredHold = booking.seats.some(

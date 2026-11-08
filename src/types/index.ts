@@ -92,6 +92,7 @@ export interface ShowtimeSeatMapResponse {
       posterUrl: string;
       duration: number;
       genres: string[];
+      isActive: boolean; // false = hidden by an admin: off sale
     };
     screen: {
       id: string;

@@ -16,6 +16,7 @@ import type Stripe from "stripe";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
+import { MOVIE_NOT_ON_SALE } from "@/lib/movie-sales";
 import {
   decideSettlement,
   getPaymentWindow,
@@ -121,7 +122,7 @@ export async function startStripePayment(params: {
           where: { showtimeId, userId, status: "PENDING" },
           include: {
             user: { select: { email: true } },
-            showtime: { select: { startsAt: true } },
+            showtime: { select: { startsAt: true, movie: { select: { isActive: true } } } },
             seats: { include: { seat: true } },
             payment: true,
           },
@@ -159,6 +160,12 @@ export async function startStripePayment(params: {
             error: "This showtime has already started.",
             status: 409,
           };
+        }
+
+        // Checked after the resume branch above: a payment opened before the movie was hidden
+        // may still finish; a new one can't start
+        if (!booking.showtime.movie.isActive) {
+          return { kind: "error", error: MOVIE_NOT_ON_SALE, status: 409 };
         }
 
         if (booking.seats.some((bs) => !bs.heldUntil || bs.heldUntil <= now)) {

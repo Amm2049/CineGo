@@ -50,6 +50,17 @@ export default function AdminMovieTable({ movies, busy, onChanged, onError }: Pr
 
   const btn = "rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50";
 
+  /** Deactivating hides the movie and stops sales; make that clear when people already hold tickets. */
+  function confirmDeactivate(movie: AdminMovieRow): boolean {
+    if (movie.upcomingTicketsSold === 0) return true; // nothing sold: deactivate right away
+    const tickets = `${movie.upcomingTicketsSold} ${movie.upcomingTicketsSold === 1 ? "ticket" : "tickets"}`;
+    return confirm(
+      `“${movie.title}” has ${tickets} (${movie.upcomingSeatsSold} seats) sold for upcoming shows.\n\n` +
+        "Deactivating hides the movie and stops new sales. Tickets already sold stay valid and can still be scanned. " +
+        "Shows are not cancelled and nobody is refunded.\n\nDeactivate it?"
+    );
+  }
+
   return (
     <div className="overflow-x-auto rounded-2xl border border-white/10">
       <table className="w-full min-w-[720px] text-left text-sm">
@@ -97,6 +108,11 @@ export default function AdminMovieTable({ movies, busy, onChanged, onError }: Pr
               <td className="px-4 py-3 text-zinc-300">{movie.releaseDate.slice(0, 10)}</td>
               <td className={`px-4 py-3 ${movie.upcomingShowtimes === 0 ? "text-amber-300" : "text-zinc-300"}`}>
                 {movie.upcomingShowtimes === 0 ? "None scheduled" : movie.upcomingShowtimes}
+                {movie.upcomingTicketsSold > 0 && (
+                  <span className="block text-xs text-zinc-500">
+                    {movie.upcomingTicketsSold} {movie.upcomingTicketsSold === 1 ? "ticket" : "tickets"} sold
+                  </span>
+                )}
               </td>
               <td className="px-4 py-3">
                 <span
@@ -128,13 +144,14 @@ export default function AdminMovieTable({ movies, busy, onChanged, onError }: Pr
                       <button
                         type="button"
                         disabled={busy || savingId === movie.id}
-                        onClick={() =>
+                        onClick={() => {
+                          if (movie.isActive && !confirmDeactivate(movie)) return;
                           patchMovie(
                             movie.id,
                             { isActive: !movie.isActive },
                             movie.isActive ? `“${movie.title}” hidden` : `“${movie.title}” is active`
-                          )
-                        }
+                          );
+                        }}
                         className={`${btn} border border-white/15 text-white hover:bg-white/10`}
                       >
                         {movie.isActive ? "Deactivate" : "Activate"}

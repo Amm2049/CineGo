@@ -105,6 +105,8 @@ vi.mock("@/lib/stripe", () => ({ getStripe: () => fake.api }));
 
 import prisma from "@/lib/prisma";
 import { PAYMENT_GRACE_MS, PAYMENT_WINDOW_MS } from "@/lib/payment-config";
+import { MOVIE_NOT_ON_SALE } from "@/lib/movie-sales";
+import { confirmBookingPayment } from "@/services/booking.service";
 import { holdShowtimeSeats, releaseShowtimeSeats } from "@/services/seat.service";
 import {
   cancelPaymentForUser,
@@ -427,5 +429,63 @@ describe("late payment after the seats were taken", () => {
     expect(state.payment!.status).toBe("REFUNDED");
     expect(await prisma.payment.count({ where: { bookingId } })).toBe(1);
     expect(state.ticket).toBeNull();
+  });
+});
+
+// ── Hidden movies are off sale (Phase 10) ───────────────────
+
+describe("a hidden (deactivated) movie", () => {
+  /** Hide the test showtime's movie while `run` executes, then restore it. */
+  async function whileHidden(run: () => Promise<void>) {
+    const { movieId } = await prisma.showtime.findUniqueOrThrow({
+      where: { id: showtime.id },
+      select: { movieId: true },
+    });
+    const { isActive } = await prisma.movie.findUniqueOrThrow({ where: { id: movieId } });
+    await prisma.movie.update({ where: { id: movieId }, data: { isActive: false } });
+    try {
+      await run();
+    } finally {
+      await prisma.movie.update({ where: { id: movieId }, data: { isActive } });
+    }
+  }
+
+  it("refuses new seat holds", async () => {
+    const seatIds = await freeSeats(1);
+    await whileHidden(async () => {
+      const hold = await holdLikeRoute(customer, seatIds);
+      expect(hold).toMatchObject({ success: false, error: MOVIE_NOT_ON_SALE });
+    });
+  });
+
+  it("refuses a new payment for seats held before it was hidden (PromptPay and simulated)", async () => {
+    const seatIds = await freeSeats(1);
+    const hold = await holdLikeRoute(customer, seatIds);
+    expect(hold.success, hold.error).toBe(true);
+    await whileHidden(async () => {
+      const stripe = await startStripePayment({ userId: customer, showtimeId: showtime.id });
+      expect(stripe).toMatchObject({ success: false, error: MOVIE_NOT_ON_SALE });
+      expect(fake.api.paymentIntents.create).not.toHaveBeenCalled();
+
+      const simulated = await confirmBookingPayment({ userId: customer, showtimeId: showtime.id });
+      expect(simulated).toMatchObject({ success: false, error: MOVIE_NOT_ON_SALE });
+    });
+  });
+
+  it("lets a PromptPay payment opened before it was hidden finish and issue the ticket", async () => {
+    const seatIds = await freeSeats(1);
+    const { intentId, bookingId } = await startPayment(customer, seatIds);
+    await whileHidden(async () => {
+      // Reopening checkout shows the same QR instead of an error
+      const again = await startStripePayment({ userId: customer, showtimeId: showtime.id });
+      expect(again.success).toBe(true);
+
+      fake.pay(intentId!);
+      await deliverSucceededWebhook(intentId!);
+      const state = await bookingState(bookingId);
+      expect(state.status).toBe("PAID");
+      expect(state.ticket).not.toBeNull();
+      expect(fake.api.refunds.create).not.toHaveBeenCalled();
+    });
   });
 });
