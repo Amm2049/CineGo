@@ -269,7 +269,7 @@ Create permanent milestone branch `phase/phase8-admin-deployment` off `develop`.
 ## 💳 Phase 9: Stripe PromptPay Payment (Test Mode) with Simulated Fallback (In Progress)
 
 ### 🎯 Objective
-Create permanent milestone branch `phase/phase9-payments` off `develop`. Replace the simulated payment with a real **Stripe PromptPay** payment in **test mode**, keep the simulated payment as a fallback behind `PAYMENT_PROVIDER`, and solve the "5-minute seat hold vs. payment time" problem. Finally merge `develop` into `main` for the production release. Step-by-step guide: `Phase9_Guide.md`.
+Create permanent milestone branch `phase/phase9-payments` off `develop`. Replace the simulated payment with a real **Stripe PromptPay** payment in **test mode**, keep the simulated payment as a fallback behind `PAYMENT_PROVIDER`, and solve the "5-minute seat hold vs. payment time" problem. Finally merge `develop` into `main` for the production release.
 
 ### 🧭 Design: seat hold vs. payment time (3 layers)
 1. **Separate payment window.** Clicking "Pay with PromptPay" extends the hold **once**: the customer gets **10 minutes** to pay; seats stay held **10 + 2 minutes** (grace for late webhooks). Seats are locked while the payment is open; paying again reuses the same PaymentIntent.

@@ -2,7 +2,7 @@
 
 # CineGo project notes
 
-Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (phase checklist), and `Phase*_Guide.md` (step-by-step guides). Check them before deciding whether behavior is intended.
+Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (phase checklist) and `Phase10_Testing_Checklist.md` (manual test run). The old step-by-step `Phase*_Guide.md` files were removed before submission (still in Git history). Check them before deciding whether behavior is intended.
 
 ## Git workflow
 - `feature/*` → `phase/phaseN-*` → `develop`. Phase branches are kept on GitHub after merging.
