@@ -17,7 +17,7 @@
 //   3. The TMDB genre list (Science Fiction saved as Sci-Fi)
 //   4. Admin and staff accounts
 //   5. Movies: the same TMDB sync as the admin "Sync Latest Releases" button
-//   6. Showtimes for the next 14 days (Bangkok time, 11:00–22:30, 25-min cleaning buffer),
+//   6. Showtimes for the next 7 days: 3 shows per theatre per day (~12:00, 16:00, 20:00 Bangkok, 25-min cleaning buffer),
 //      only for theatre-days that have no showtimes yet
 
 import "dotenv/config";
@@ -29,8 +29,11 @@ const strip = (v?: string) => (v ?? "").trim().replace(/^['"]|['"]$/g, "");
 const SCREEN_FORMATS = ["IMAX Laser", "Dolby Cinema", "4DX Motion", "Standard"];
 const ROW_PRICES: Record<string, number> = { A: 280, B: 280, C: 200, D: 200, E: 150, F: 150 };
 const SEATS_PER_ROW = 10;
-const SCHEDULE_DAYS = 14;
+const SCHEDULE_DAYS = 7;
 const MOVIES_IN_ROTATION = 8;
+// A light schedule: 3 shows per theatre per day. A show starts at its slot, or later if the
+// previous show (plus the cleaning buffer) runs past it.
+const SHOW_SLOTS = ["12:00", "16:00", "20:00"];
 
 function fail(message: string): never {
   console.error(`\n❌ ${message}\n`);
@@ -154,17 +157,17 @@ async function main() {
             where: { screenId: screen.id, startsAt: { gte: dayStart, lt: dayEnd } },
           });
           if (existing > 0) continue; // never add to a day that is already scheduled
-          const close = cinemaLocalToDate(`${day}T22:30`);
-          let t = cinemaLocalToDate(`${day}T11:00`);
           let m = (s + d) % rotation.length;
+          let nextFree = 0; // earliest time the theatre is clean again
           const rows = [];
-          while (t < close) {
+          for (const slot of SHOW_SLOTS) {
             const movie = rotation[m];
+            const t = new Date(Math.max(cinemaLocalToDate(`${day}T${slot}`).getTime(), nextFree));
             const endsAt = computeEndsAt(t, movie.duration);
             if (t >= earliest) rows.push({ movieId: movie.id, screenId: screen.id, startsAt: t, endsAt });
-            // next start: after the cleaning buffer, rounded up to 5 minutes
+            // cleaning buffer, rounded up to 5 minutes
             const next = endsAt.getTime() + CLEANING_BUFFER_MINUTES * 60_000;
-            t = new Date(Math.ceil(next / (5 * 60_000)) * 5 * 60_000);
+            nextFree = Math.ceil(next / (5 * 60_000)) * 5 * 60_000;
             m = (m + 1) % rotation.length;
           }
           if (rows.length > 0) created += (await prisma.showtime.createMany({ data: rows })).count;
