@@ -112,7 +112,7 @@ Log in as **admin** in the incognito window.
 * [ ] **Showtimes:** delete a showtime without bookings → removed; try deleting one **with** bookings → refused.
 * [ ] **Scanner (webcam):** allow the camera, show A's ticket QR (phone photo of the screen, or a second screen):
   * if the show starts **more than 60 min from now** → "Entry opens 60 minutes before…" (TOO_EARLY), ticket not used;
-  * to test admission, buy a ticket for a showtime that starts within the next hour (add one in Showtimes if needed) → **ADMITTED**; scan again → **ALREADY_USED**.
+  * to test admission, buy a ticket **as a customer** for a showtime that starts within the next hour (add one in Showtimes if needed) → **ADMITTED**; scan again → **ALREADY_USED**.
 * [ ] **Scanner (manual):** type the ticket code by hand → same result as the QR; type `hello` → "This is not a CineGo ticket"; a random UUID → "No ticket exists".
 * [ ] After admitting, the ticket shows as used for the customer, and it appears in the dashboard's Recent scans.
 * [ ] Log in as **staff**: the scanner works, but `/admin`, Movies and Showtimes are not accessible.
@@ -143,6 +143,20 @@ Check the DevTools Console / terminal and note whether these still appear:
 * [ ] Any other red errors seen during sections 1–8 (list them in Notes).
 
 Notes:
+
+---
+
+## Step 4 — fixes to make
+
+Collected while testing; done after the manual checks.
+
+* [ ] **Admin/staff accounts can't book tickets** *(found 2026-11-08: the admin could book and buy; the scope never decided this; decision: admin and staff accounts only run the cinema)*
+  * `src/proxy.ts`: ADMIN/STAFF opening `/checkout`, `/tickets` or `/profile` → sent to `/admin` (staff → `/admin/scanner`).
+  * APIs refuse non-customers server-side: seat hold/release, `/api/payments*`, `/api/user/interests`.
+  * UI: hide "Book"/seat-selection links and the customer menu items for admin/staff; after login, send admin/staff straight to `/admin` (staff → scanner).
+  * Browsing `/`, `/movies`, `/experiences` stays open to every role.
+  * Add e2e tests: admin and staff are redirected from checkout and get 403 from the booking APIs.
+* [ ] Warnings from section 9 (LCP poster image, `data-scroll-behavior`, next/image width/height) and the pg "client.query() while already executing" warning in the concurrency script.
 
 ---
 
