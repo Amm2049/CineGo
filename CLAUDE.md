@@ -47,3 +47,4 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 - No cron for expiry (Vercel Hobby crons are daily): the customer's countdown, the status poll, and `closeExpiredPaymentsForSeats()` in the hold route close expired payments.
 - Stripe calls never run inside a Prisma transaction: reserve in the DB, call Stripe, then link `transactionReference` (`PENDING-…` → `pi_…`) with a compare-and-set.
 - Webhook: `/api/webhooks/stripe`, signature checked against the raw body with `STRIPE_WEBHOOK_SECRET`; handler errors return 500 so Stripe retries.
+- `npm run test:integration` (`vitest.integration.config.ts`, `src/tests/integration/`) runs the payment services against the real DB with an in-memory fake Stripe; time passing = moving `expiresAt`/`heldUntil` into the past. Excluded from `npm test`; CI runs it after the seed.

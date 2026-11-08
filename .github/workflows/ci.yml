@@ -59,6 +59,10 @@ jobs:
       - name: Concurrency guarantees (real Postgres)
         run: npm run test:concurrency
 
+      # Payment window expiry + late-payment refund; Stripe is faked inside the tests
+      - name: Integration tests (real Postgres)
+        run: npm run test:integration
+
       - name: Build
         run: npm run build
 

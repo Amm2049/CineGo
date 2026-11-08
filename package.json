@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:concurrency": "tsx scripts/concurrency-test.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:concurrency":"tsx scripts/concurrency-test.ts",
     "test:e2e": "playwright test",
     "stripe:listen": "node scripts/stripe-listen.mjs",
     "postinstall": "prisma generate"

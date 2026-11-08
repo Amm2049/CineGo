@@ -9,6 +9,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/tests/**/*.test.ts', 'src/tests/**/*.test.tsx'],
+    exclude: ['src/tests/integration/**', 'node_modules/**'], // need a database: npm run test:integration
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

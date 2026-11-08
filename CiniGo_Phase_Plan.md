@@ -297,8 +297,8 @@ Create permanent milestone branch `phase/phase9-payments` off `develop`. Replace
 ### ✅ Verification Checkpoint
 * [x] Pay with PromptPay in test mode (Stripe's hosted test page → "Authorize") and verify the page redirects to the ticket within ~3 seconds. *(2026-11-07: Payment SUCCESS, amount ฿560 = seat total, booking PAID, 1 ACTIVE ticket)*
 * [x] Fail a test payment and verify the seats are released with a clear message. *(2026-11-07: Payment FAILED, booking EXPIRED, BookingSeats removed, no ticket)*
-* [ ] Let the 10-minute countdown run out and verify the QR can no longer be paid and the seats become available after the window.
+* [x] Let the 10-minute countdown run out and verify the QR can no longer be paid and the seats become available after the window. *(2026-11-08: automated in `src/tests/integration/payment-window.test.ts` — countdown, status poll, another customer's hold, and the last-second-payment race; `npm run test:integration`)*
 * [x] Replay a `payment_intent.succeeded` event (`stripe events resend`) and verify no second ticket or payment is created. *(2026-11-07: still 1 payment and 1 ticket for the intent)*
-* [ ] Simulate a late payment after another customer took the seats and verify an automatic refund (`Payment.status = REFUNDED`). *(plan: automated test of the refund path)*
+* [x] Simulate a late payment after another customer took the seats and verify an automatic refund (`Payment.status = REFUNDED`). *(2026-11-08: automated in `src/tests/integration/payment-window.test.ts`, including a repeated webhook refunding only once)*
 * [ ] With `PAYMENT_PROVIDER` unset, verify the simulated payment still works and CI stays green.
 
