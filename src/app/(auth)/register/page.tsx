@@ -4,7 +4,7 @@
 // Registration page — calls POST /api/auth/register then auto-signs in
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signInWithCredentials } from "@/lib/credentials-sign-in";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -48,20 +48,16 @@ export default function RegisterPage() {
     }
 
     // 2. Auto sign-in after successful registration
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    const outcome = await signInWithCredentials(email, password);
 
     setLoading(false);
 
-    if (result?.error) {
-      setError("Account created! Please sign in manually.");
-      router.push("/login");
-    } else {
+    if (outcome === "ok") {
       router.push("/");
       router.refresh();
+    } else {
+      setError("Account created! Please sign in manually.");
+      router.push("/login");
     }
   }
 

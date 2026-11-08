@@ -4,7 +4,7 @@
 // Login page — credentials sign-in via NextAuth
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signInWithCredentials } from "@/lib/credentials-sign-in";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -20,19 +20,17 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    const outcome = await signInWithCredentials(email, password);
 
     setLoading(false);
 
-    if (result?.error) {
-      setError("Invalid email or password. Please try again.");
-    } else {
+    if (outcome === "ok") {
       router.push("/");
       router.refresh();
+    } else if (outcome === "invalid") {
+      setError("Invalid email or password. Please try again.");
+    } else {
+      setError("We couldn't sign you in. Please try again.");
     }
   }
 
