@@ -7,7 +7,8 @@ test("homepage renders the catalog", async ({ page }) => {
 
 test("movies page lists now showing titles", async ({ page }) => {
   await page.goto("/movies");
-  await expect(page.locator("a[href^='/checkout/']").first()).toBeVisible();
+  // Cards open the movie page (showtime picker), not a seat map
+  await expect(page.locator("a[href^='/movies/']").first()).toBeVisible();
 });
 
 test("guests are redirected from /admin to login", async ({ page }) => {

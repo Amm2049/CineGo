@@ -7,8 +7,10 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
+import { cinemaDayOf, formatCinemaDayLabel, formatCinemaTime } from "@/lib/schedule";
 import SeatMap from "@/components/seatmap/SeatMap";
 import SeatLegend from "@/components/seatmap/SeatLegend";
 import SeatHoldTimer from "@/components/seatmap/SeatHoldTimer";
@@ -250,22 +252,34 @@ export default function SeatSelectionClient({
             {showtime.movie.title}
           </h1>
           <p className="text-sm text-zinc-300 mt-1">
-            {startsAt.toLocaleDateString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-            })}{" "}
-            ·{" "}
-            {startsAt.toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {/* Bangkok time, the same as the showtime picker (not the browser's time zone) */}
+            {formatCinemaDayLabel(cinemaDayOf(startsAt))} · {formatCinemaTime(startsAt)}
           </p>
           <p className="text-xs text-zinc-400 mt-0.5">
             {showtime.screen.name} · {showtime.screen.format} ·{" "}
             {showtime.screen.cinemaName}
           </p>
         </div>
+        {/* Hidden while a PromptPay payment is open: its panel has Cancel, which releases the seats */}
+        {!checkout && (
+          <Link
+            href={`/movies/${showtime.movie.id}?date=${cinemaDayOf(startsAt)}`}
+            onClick={() => {
+              // Give held seats back right away instead of blocking them for up to 5 minutes
+              if (heldSeatIds.length > 0) {
+                void fetch(`/api/showtimes/${showtimeId}/seats/release`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({}),
+                  keepalive: true, // survives the navigation
+                });
+              }
+            }}
+            className="ml-auto shrink-0 self-start rounded-xl border border-white/15 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-[#5938ff] hover:bg-white/[0.04]"
+          >
+            Change showtime
+          </Link>
+        )}
       </header>
 
       {/* Step indicator */}

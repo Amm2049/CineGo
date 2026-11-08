@@ -32,7 +32,6 @@ export interface MovieCardProps {
   matchScore?: number;
   isUpcoming?: boolean;
   priority?: boolean;
-  showtimeId?: string;
 }
 
 export interface GenrePreferenceItem {
@@ -64,7 +63,6 @@ export interface MovieItem {
   formats: string[];
   isUpcoming: boolean;
   matchScore?: number;
-  showtimeId?: string;
 }
 
 // ── Phase 6: Seat Map & Live Booking Types ───────────────────

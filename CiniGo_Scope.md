@@ -92,9 +92,10 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 
 ## 4. Final 13-Page Inventory & Feature Scope
 
-### 🌐 4.1 Customer Pages (7 Pages)
+### 🌐 4.1 Customer Pages (8 Pages)
 1. **Homepage (`/`):** Hero Banner (featured blockbuster) + 5-card Now Showing preview + 5-card Upcoming Releases preview (both with in-line `🔥 {matchScore}%` AI recommendation badges and fully clickable cards without inner button clutter) + *"View All Movies →"* and *"Explore All Upcoming →"* CTAs. Movie lists are fetched live from the database — **"Now Showing"** = `releaseDate ≤ today AND has at least one future showtime`; **"Upcoming"** = `releaseDate > today`. No status flags stored.
 2. **Movies Catalog Page (`/movies`):** Clean 2-tab view (`[ 🍿 Now Showing ]` vs `[ 📅 Upcoming Releases ]`) displaying movies queried dynamically from the database with derived status logic and AI match badges.
+2a. **Movie & Showtime Picker (`/movies/[id]`):** *(added in Phase 10)* Movie details plus a date strip (Today, Tomorrow, …) and the day's times grouped by theatre/format, with seats left (sold + held) and sold-out times disabled; each time opens `/checkout/[showtimeId]`. Movie cards and the hero link here; the seat map links back via "Change showtime". Hidden (inactive) movies show Not Found.
 3. **Experiences FYI Page (`/experiences`):** Informational page highlighting cinema screen formats (IMAX Laser, Dolby Cinema, 4DX Motion, VIP Lounge).
 4. **Seat Selection & Checkout (`/checkout/[showtimeId]`):** Interactive seat map, dynamic row pricing, 5-minute seat hold timer (`heldUntil`), SWR polling, and payment: a Stripe PromptPay QR with a 10-minute payment countdown and automatic redirect to the ticket once paid (or the simulated payment when `PAYMENT_PROVIDER` is not `stripe`).
 5. **Digital Ticket Pass (`/tickets/[id]`):** Rendered scannable QR code pass (`qrcode.react`), seat details, screen number, and booking reference.

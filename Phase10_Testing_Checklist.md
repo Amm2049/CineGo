@@ -168,7 +168,7 @@ Collected while testing; done after the manual checks.
   * Admin Movies → Deactivate shows a confirmation with the number of tickets sold for upcoming showtimes, and says those tickets stay valid.
   * No sold tickets → deactivate right away, as now.
   * *Out of scope:* actually cancelling a show and refunding its tickets (no such feature exists; mention as future work in the report).
-* [ ] **P1 — Customers can choose a showtime** *(found 2026-11-08: a movie card links straight to ONE arbitrary showtime — `getNowShowingMovies()` takes `showtimes[0]` with no `orderBy` — so customers can't pick the date, time or theatre; not in the scope's page list (`CiniGo_Scope.md` §4.1), so it was never built)*
+* [x] **P1 — Customers can choose a showtime** *(done 2026-11-08, `feature/showtime-picker`)* *(found 2026-11-08: a movie card links straight to ONE arbitrary showtime — `getNowShowingMovies()` takes `showtimes[0]` with no `orderBy` — so customers can't pick the date, time or theatre; not in the scope's page list (`CiniGo_Scope.md` §4.1), so it was never built)*
   * Movie → showtime picker: a date strip (Today, Tomorrow, … up to the last scheduled day) → times grouped by theatre/format, each linking to `/checkout/<showtimeId>`.
   * Past showtimes hidden; sold-out ones shown but disabled; Bangkok time.
   * Showtimes always ordered by `startsAt` wherever a "next showtime" is used.

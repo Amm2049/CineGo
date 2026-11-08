@@ -23,6 +23,11 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 - `npm run dev:ticket -- <customer email> [--seats N] [--within MIN]` (DEV ONLY, refuses in production): books a paid ticket for the next show starting within 60 min via the real hold → simulated-payment flow, and prints the ticket URL and code for scanner testing.
 - Seed creates `admin@cinego.com` / `admin123`. Re-running the seed wipes ALL data, including users.
 
+## Browsing → booking (Phase 10)
+- Movie cards and the hero open `/movies/[id]` (showtime picker: `getMovieWithShowtimes()`), never a checkout directly. Group showtimes by Bangkok day with `cinemaDayOf()`; always `orderBy: { startsAt: "asc" }` when picking a "next" showtime.
+- The seat map's "Change showtime" link is hidden while a PromptPay payment is open and releases held seats on click.
+- `(customer)/loading.tsx` streams pages, so `notFound()` there renders the 404 page with HTTP 200; test the visible content, not the status.
+
 ## Screens / theatres
 - `Screen.name` is the theatre ("Theatre 1"), `Screen.number` its number (unique per cinema), `Screen.format` the projection format ("IMAX Laser"). Format badges on movie cards read `screen.format`, never `screen.name`.
 

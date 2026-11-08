@@ -98,7 +98,6 @@ export default async function HomePage() {
                     formats={uniqueFormats.length > 0 ? uniqueFormats : ["Digital 4K"]}
                     matchScore={rec?.matchScore}
                     priority={idx < 2}
-                    showtimeId={movie.showtimes[0]?.id}
                   />
                 );
               })}

@@ -17,14 +17,14 @@ export default function MovieCard({
   matchScore,
   isUpcoming = false,
   priority = false,
-  showtimeId,
 }: MovieCardProps) {
   const formattedDate = new Date(releaseDate).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
 
-  const cardHref = !isUpcoming && showtimeId ? `/checkout/${showtimeId}` : `/movies#movie-${id}`;
+  // Every card opens the movie page, where customers pick a date, time and theatre
+  const cardHref = `/movies/${id}`;
   const hasMatch = typeof matchScore === "number";
   const metaLine = [isUpcoming ? `Opens ${formattedDate}` : formatDuration(duration), genres[0]]
     .filter(Boolean)

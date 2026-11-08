@@ -100,7 +100,6 @@ export default function MoviesCatalogClient({
                   formats={movie.formats}
                   matchScore={rec?.matchScore}
                   isUpcoming={movie.isUpcoming}
-                  showtimeId={movie.showtimeId}
                 />
               </div>
             );

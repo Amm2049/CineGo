@@ -1,7 +1,10 @@
 // src/tests/unit/schedule.test.ts
 import { describe, it, expect } from "vitest";
 import {
+  addCinemaDays,
+  cinemaDayOf,
   cinemaLocalToDate,
+  formatCinemaDayLabel,
   computeEndsAt,
   formatCinemaTime,
   rangesOverlap,
@@ -38,5 +41,25 @@ describe("time-zone helpers", () => {
   });
   it("formats times in Bangkok whatever the machine's zone", () => {
     expect(formatCinemaTime("2026-11-05T12:30:00.000Z")).toBe("19:30");
+  });
+});
+
+describe("showtime picker day helpers (Bangkok calendar)", () => {
+  it("puts a late-night Bangkok show on its Bangkok day, not the UTC day", () => {
+    // 23:30 Bangkok on 10 Nov = 16:30 UTC on 10 Nov; 01:00 Bangkok on 11 Nov = 18:00 UTC on 10 Nov
+    expect(cinemaDayOf(cinemaLocalToDate("2026-11-10T23:30"))).toBe("2026-11-10");
+    expect(cinemaDayOf(cinemaLocalToDate("2026-11-11T01:00"))).toBe("2026-11-11");
+  });
+
+  it("adds days across month and year ends", () => {
+    expect(addCinemaDays("2026-11-30", 1)).toBe("2026-12-01");
+    expect(addCinemaDays("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("labels today and tomorrow, otherwise weekday + date", () => {
+    const now = cinemaLocalToDate("2026-11-08T23:50"); // late evening in Bangkok
+    expect(formatCinemaDayLabel("2026-11-08", now)).toBe("Today");
+    expect(formatCinemaDayLabel("2026-11-09", now)).toBe("Tomorrow");
+    expect(formatCinemaDayLabel("2026-11-10", now)).toBe("Tue 10 Nov");
   });
 });
