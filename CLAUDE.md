@@ -27,6 +27,7 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 - Movie cards and the hero open `/movies/[id]` (showtime picker: `getMovieWithShowtimes()`), never a checkout directly. Group showtimes by Bangkok day with `cinemaDayOf()`; always `orderBy: { startsAt: "asc" }` when picking a "next" showtime.
 - The seat map's "Change showtime" link is hidden while a PromptPay payment is open and releases held seats on click.
 - Hidden (inactive) movies are off sale: `holdShowtimeSeats()`, `confirmBookingPayment()` and a NEW `startStripePayment()` refuse with `MOVIE_NOT_ON_SALE` (`src/lib/movie-sales.ts`); a PromptPay payment already open may still finish; sold tickets stay valid and scannable. The admin table shows tickets sold for upcoming shows and asks before deactivating a movie that has any.
+- AI match badges need a taste signal: `getMovieRecommendationsMap()` returns `{}` (no badges, no Gemini call) for a customer with no favourite genres and no PAID booking. Saving genres or paying clears the cached scores, so badges appear on the next visit.
 - `(customer)/loading.tsx` streams pages, so `notFound()` there renders the 404 page with HTTP 200; test the visible content, not the status.
 
 ## Screens / theatres

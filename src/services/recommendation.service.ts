@@ -338,8 +338,13 @@ export async function getMovieRecommendationsMap(
       select: {
         recommendations: true,
         recommendationsUpdatedAt: true,
+        _count: { select: { interests: true, bookings: { where: { status: "PAID" } } } },
       },
     });
+
+    // Nothing to personalise from yet (new customer: no favourite genres, no bookings). Show no
+    // match badges rather than the same score on every movie, and don't call Gemini (Phase 10).
+    if (!user || (user._count.interests === 0 && user._count.bookings === 0)) return {};
 
     const cachedMap = user?.recommendations as unknown as
       | RecommendationMap
