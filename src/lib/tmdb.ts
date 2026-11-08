@@ -23,6 +23,7 @@ export interface TmdbMovieSummary {
   vote_average: number;
   vote_count: number;
   popularity: number;
+  original_language: string; // ISO 639-1, e.g. "en", "th"
 }
 
 export interface TmdbReleaseDates {
@@ -44,6 +45,7 @@ export interface TmdbMovieDetails {
   vote_average: number;
   tagline: string | null;
   status: string;
+  original_language?: string; // ISO 639-1, e.g. "en", "th"
   release_dates?: TmdbReleaseDates; // present when append_to_response=release_dates
 }
 

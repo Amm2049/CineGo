@@ -1,7 +1,12 @@
 // src/tests/unit/movie-sync.service.test.ts
 import { describe, it, expect } from "vitest";
-import { mapTmdbToMovieInput, normalizeGenreName } from "@/services/movie-sync.service";
-import type { TmdbMovieDetails } from "@/lib/tmdb";
+import {
+  collectEnglishTitles,
+  MAX_SYNC_PAGES,
+  mapTmdbToMovieInput,
+  normalizeGenreName,
+} from "@/services/movie-sync.service";
+import type { TmdbMovieDetails, TmdbMovieSummary } from "@/lib/tmdb";
 
 const NOW = new Date("2026-11-04T12:00:00Z");
 
@@ -72,5 +77,55 @@ describe("mapTmdbToMovieInput", () => {
 
   it("builds full TMDB image URLs", () => {
     expect(mapTmdbToMovieInput(details(), NOW).posterUrl).toBe("https://image.tmdb.org/t/p/w500/p.jpg");
+  });
+});
+
+describe("collectEnglishTitles (bulk sync: English-language films only)", () => {
+  const movie = (id: number, lang: string) => ({ id, original_language: lang }) as TmdbMovieSummary;
+  /** A fake paged TMDB list; records which pages were requested. */
+  function list(pages: TmdbMovieSummary[][]) {
+    const requested: number[] = [];
+    const fetchPage = async (page: number) => {
+      requested.push(page);
+      return { results: pages[page - 1] ?? [], total_pages: pages.length };
+    };
+    return { fetchPage, requested };
+  }
+
+  it("skips other languages and keeps TMDB's order", async () => {
+    const { fetchPage } = list([[movie(1, "th"), movie(2, "en"), movie(3, "ko"), movie(4, "en")]]);
+    expect(await collectEnglishTitles(fetchPage, 10, new Set())).toEqual([2, 4]);
+  });
+
+  it("reads more pages until the target is met, then stops", async () => {
+    const { fetchPage, requested } = list([
+      [movie(1, "en"), movie(2, "th")],
+      [movie(3, "hi"), movie(4, "en")],
+      [movie(5, "en"), movie(6, "en")],
+      [movie(7, "en")],
+    ]);
+    expect(await collectEnglishTitles(fetchPage, 3, new Set())).toEqual([1, 4, 5]);
+    expect(requested).toEqual([1, 2, 3]);
+  });
+
+  it("never pads with other languages when the list runs out", async () => {
+    const { fetchPage, requested } = list([[movie(1, "en"), movie(2, "th")]]);
+    expect(await collectEnglishTitles(fetchPage, 10, new Set())).toEqual([1]);
+    expect(requested).toEqual([1]); // total_pages = 1
+  });
+
+  it(`reads at most ${MAX_SYNC_PAGES} pages`, async () => {
+    const pages = Array.from({ length: 20 }, (_, i) => [movie(100 + i, "th")]);
+    const { fetchPage, requested } = list(pages);
+    expect(await collectEnglishTitles(fetchPage, 10, new Set())).toEqual([]);
+    expect(requested.length).toBe(MAX_SYNC_PAGES);
+  });
+
+  it("skips titles already taken from the other list", async () => {
+    const seen = new Set<number>();
+    const nowPlaying = list([[movie(1, "en"), movie(2, "en")]]);
+    const upcoming = list([[movie(2, "en"), movie(3, "en")]]);
+    expect(await collectEnglishTitles(nowPlaying.fetchPage, 10, seen)).toEqual([1, 2]);
+    expect(await collectEnglishTitles(upcoming.fetchPage, 10, seen)).toEqual([3]);
   });
 });

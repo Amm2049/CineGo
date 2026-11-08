@@ -12,10 +12,40 @@ import {
   searchMovies,
   TMDB_REGION,
   type TmdbMovieDetails,
+  type TmdbMovieSummary,
 } from "@/lib/tmdb";
 
 export const NOW_SHOWING_TARGET = 10;
 export const UPCOMING_TARGET = 20;
+/** The bulk sync keeps English-language films only (US, UK, ... still with their THAI release dates). */
+export const SYNC_ORIGINAL_LANGUAGE = "en";
+/** TMDB list pages to read per list while filling the targets (20 titles per page). */
+export const MAX_SYNC_PAGES = 5;
+
+type ListPage = { results: TmdbMovieSummary[]; total_pages: number };
+
+/**
+ * Take up to `target` English-language titles from a paged TMDB list, in TMDB's order, skipping ids
+ * in `seen` (which it updates). Stops early when the list runs out; never pads with other languages.
+ */
+export async function collectEnglishTitles(
+  fetchPage: (page: number) => Promise<ListPage>,
+  target: number,
+  seen: Set<number>
+): Promise<number[]> {
+  const ids: number[] = [];
+  for (let page = 1; page <= MAX_SYNC_PAGES && ids.length < target; page++) {
+    const { results, total_pages } = await fetchPage(page);
+    for (const m of results) {
+      if (ids.length >= target) break;
+      if (m.original_language !== SYNC_ORIGINAL_LANGUAGE || seen.has(m.id)) continue;
+      seen.add(m.id);
+      ids.push(m.id);
+    }
+    if (page >= total_pages) break;
+  }
+  return ids;
+}
 const DETAIL_BATCH_SIZE = 5; // TMDB detail calls in flight at once
 const UPSERT_BATCH_SIZE = 5; // database transactions in flight at once
 
@@ -180,31 +210,18 @@ function reasonOf(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
 
-/** Fetch 10 now playing + 20 upcoming Thai titles and upsert them all. */
+/** Fetch 10 now playing + 20 upcoming English-language titles in Thai cinemas and upsert them all. */
 export async function syncLatestReleases(): Promise<SyncSummary> {
   if (!hasTmdbCredentials()) {
     throw new Error("TMDB credentials are not configured");
   }
   const startedAt = new Date();
 
-  const [nowPlaying, upcomingPage1, upcomingPage2] = await Promise.all([
-    getNowPlayingMovies(1),
-    getUpcomingMovies(1),
-    getUpcomingMovies(2),
-  ]);
-
-  // Deduplicate: a title in both lists is fetched once
-  const ids = nowPlaying.results.slice(0, NOW_SHOWING_TARGET).map((m) => m.id);
-  const seen = new Set(ids);
-  let upcomingCount = 0;
-  for (const m of [...upcomingPage1.results, ...upcomingPage2.results]) {
-    if (upcomingCount >= UPCOMING_TARGET) break;
-    if (!seen.has(m.id)) {
-      seen.add(m.id);
-      ids.push(m.id);
-      upcomingCount++;
-    }
-  }
+  // English-language titles only; a title in both lists is fetched once (shared `seen`)
+  const seen = new Set<number>();
+  const nowPlayingIds = await collectEnglishTitles(getNowPlayingMovies, NOW_SHOWING_TARGET, seen);
+  const upcomingIds = await collectEnglishTitles(getUpcomingMovies, UPCOMING_TARGET, seen);
+  const ids = [...nowPlayingIds, ...upcomingIds];
 
   const summary: SyncSummary = {
     total: ids.length,
