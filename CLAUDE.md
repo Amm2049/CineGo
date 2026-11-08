@@ -29,6 +29,7 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 ## Admin & deployment (Phase 8)
 - Every `/api/admin/*` route must call `requireAdmin()` or `requireStaff()` (`src/lib/admin-guard.ts`); `proxy.ts` does not cover APIs.
 - Roles: CUSTOMER, STAFF (scanner + verify-ticket only), ADMIN. Admin-only pages call `requireAdminPage()`. Seed creates `staff@cinego.com` / `staff123`.
+- Only CUSTOMER accounts book (Phase 10): booking/payment/interests APIs call `requireCustomer()` (`admin-guard.ts`); `/tickets` and `/profile` send ADMIN/STAFF to `homePathForRole()`; `/checkout` shows a "customer accounts only" message. Role rules and post-login redirects live in `src/lib/roles.ts` (`postLoginPath()` follows `callbackUrl` only for local paths the role may use). Admin lands on `/admin`, staff on `/admin/scanner`.
 - `/api/cron/sync-movies` is protected by `Bearer CRON_SECRET` (fails closed if unset). Schedule in `vercel.json`.
 - TMDB lists use `region=TH`; `Movie.releaseDate` is the Thai theatrical date from `release_dates`. Never fake dates.
 - Sync never overwrites `Movie.title/description/isActive` (admin-owned). Inactive movies are hidden, not deleted.

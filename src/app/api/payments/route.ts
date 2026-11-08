@@ -4,8 +4,7 @@
 // Otherwise           → simulated payment: confirms at once and issues the digital ticket (Phase 7).
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireCustomer } from "@/lib/admin-guard";
 import { getPaymentProvider } from "@/lib/payment-config";
 import { StripeNotConfiguredError } from "@/lib/stripe";
 import { confirmBookingPayment } from "@/services/booking.service";
@@ -14,13 +13,9 @@ import type { StartPaymentResponse } from "@/types";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Authentication required to complete payment" },
-        { status: 401 }
-      );
-    }
+    // Booking is for customer accounts: admin/staff get 403, guests 401
+    const auth = await requireCustomer();
+    if (!auth.ok) return auth.response;
 
     const body = await request.json().catch(() => ({}));
     const showtimeId = typeof body?.showtimeId === "string" ? body.showtimeId : "";
@@ -30,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (getPaymentProvider() === "stripe") {
-      const started = await startStripePayment({ userId: session.user.id, showtimeId });
+      const started = await startStripePayment({ userId: auth.userId, showtimeId });
       if (!started.success) {
         return NextResponse.json({ error: started.error }, { status: started.status });
       }
@@ -43,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await confirmBookingPayment({
-      userId: session.user.id,
+      userId: auth.userId,
       showtimeId,
     });
 

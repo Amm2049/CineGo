@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isCustomer } from "@/lib/roles";
 import { releaseShowtimeSeats } from "@/services/seat.service";
 
 export async function POST(
@@ -13,7 +14,10 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }); // nothing to release for a guest
+    }
+    if (!isCustomer(session.user.role)) {
+      return NextResponse.json({ error: "Booking is for customer accounts." }, { status: 403 });
     }
 
     const { id: showtimeId } = await params;

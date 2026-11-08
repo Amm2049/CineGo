@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// Order = how often an admin needs it: overview → daily schedule → weekly catalog → door (mostly staff)
 const LINKS = [
   { href: "/admin", label: "Dashboard", staff: false },
-  { href: "/admin/movies", label: "Movies", staff: false },
   { href: "/admin/showtimes", label: "Showtimes", staff: false },
+  { href: "/admin/movies", label: "Movies", staff: false },
   { href: "/admin/scanner", label: "Ticket Scanner", staff: true },
 ];
 

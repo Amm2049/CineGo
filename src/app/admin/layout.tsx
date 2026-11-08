@@ -14,7 +14,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (role !== "ADMIN" && role !== "STAFF") redirect("/"); // STAFF: scanner only (see requireAdminPage)
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    // w-full min-w-0: as a flex item of <body>, this would otherwise grow to its widest table and
+    // make the whole page scroll sideways on phones; tables scroll inside their own overflow-x-auto box
+    <div className="w-full min-w-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <AdminNav role={role} />
       <div className="mt-8">{children}</div>
     </div>

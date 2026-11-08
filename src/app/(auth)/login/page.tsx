@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { signInWithCredentials } from "@/lib/credentials-sign-in";
+import { postLoginPath } from "@/lib/roles";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -20,12 +21,15 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const outcome = await signInWithCredentials(email, password);
+    const { outcome, role } = await signInWithCredentials(email, password);
 
     setLoading(false);
 
     if (outcome === "ok") {
-      router.push("/");
+      // Back to the page that asked for login (if this role may use it), else the role's home:
+      // admin → /admin, staff → scanner, customer → /. Read at submit time: no useSearchParams Suspense needed.
+      const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
+      router.push(postLoginPath(callbackUrl, role));
       router.refresh();
     } else if (outcome === "invalid") {
       setError("Invalid email or password. Please try again.");

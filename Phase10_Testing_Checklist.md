@@ -152,7 +152,7 @@ Notes:
 
 Collected while testing; done after the manual checks.
 
-* [ ] **Admin/staff accounts can't book tickets** *(found 2026-11-08: the admin could book and buy; the scope never decided this; decision: admin and staff accounts only run the cinema)*
+* [x] **Admin/staff accounts can't book tickets** *(done 2026-11-08, `feature/staff-cannot-book`)* *(found 2026-11-08: the admin could book and buy; the scope never decided this; decision: admin and staff accounts only run the cinema)*
   * `src/proxy.ts`: ADMIN/STAFF opening `/checkout`, `/tickets` or `/profile` → sent to `/admin` (staff → `/admin/scanner`).
   * APIs refuse non-customers server-side: seat hold/release, `/api/payments*`, `/api/user/interests`.
   * UI: hide "Book"/seat-selection links and the customer menu items for admin/staff; after login, send admin/staff straight to `/admin` (staff → scanner).
@@ -191,7 +191,7 @@ Collected while testing; done after the manual checks.
   * P2: the result message says what to do next instead of repeating the title.
   * P2: short manual-entry placeholder ("Ticket code") plus help text (the current placeholder is cut off).
   * P2: a short sound and/or vibration for admit and a different one for reject.
-* [ ] **Recheck admin landing page priority and nav order**
+* [x] **Recheck admin landing page priority and nav order** *(done 2026-11-08, `feature/staff-cannot-book`)*
   * Where admin/staff land after logging in (today: the customer home page `/`; staff → scanner?). Connects to the "admin/staff can't book" item.
   * Admin nav order (today: Dashboard · Movies · Showtimes · Ticket Scanner): order it by how often each page is used and what matters most on the dashboard; decide whether the site's customer nav (Movies, Experiences, My Tickets) should show for admin/staff at all.
 * [ ] Warnings from section 9 (LCP poster image, `data-scroll-behavior`, next/image width/height) and the pg "client.query() while already executing" warning in the concurrency script.

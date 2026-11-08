@@ -48,7 +48,7 @@ export default function RegisterPage() {
     }
 
     // 2. Auto sign-in after successful registration
-    const outcome = await signInWithCredentials(email, password);
+    const { outcome } = await signInWithCredentials(email, password); // new accounts are always CUSTOMER
 
     setLoading(false);
 

@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isCustomer } from "@/lib/roles";
 import { getMovieRecommendations } from "@/services/recommendation.service";
 
 // GET /api/recommendations
@@ -16,6 +17,15 @@ export async function GET() {
       authenticated: false,
       recommendations: [],
       message: "Sign in and select favorite genres to receive personalized AI recommendations.",
+    });
+  }
+
+  // Admin/staff accounts don't book, so personal recommendations (and Gemini calls) are skipped
+  if (!isCustomer(session.user.role)) {
+    return NextResponse.json({
+      authenticated: true,
+      recommendations: [],
+      message: "AI recommendations are for customer accounts.",
     });
   }
 

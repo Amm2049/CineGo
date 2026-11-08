@@ -4,6 +4,7 @@
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isCustomer } from "@/lib/roles";
 import { getFormattedCatalogMovies } from "@/services/movie.service";
 import { getMovieRecommendationsMap } from "@/services/recommendation.service";
 import MoviesCatalogClient from "./MoviesCatalogClient";
@@ -23,7 +24,8 @@ export default async function MoviesPage() {
   ]);
 
   const allMovieIds = [...nowShowing.map((m) => m.id), ...upcoming.map((m) => m.id)];
-  const userId = session?.user?.id;
+  // AI matches are for customers; admin/staff accounts don't book (and shouldn't trigger Gemini)
+  const userId = isCustomer(session?.user?.role) ? session?.user?.id : undefined;
 
   // DB-cached lookup (~2-5ms) with on-demand compute fallback
   const recommendations: RecommendationMap = userId

@@ -3,6 +3,7 @@
 
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { CINEMA_UTC_OFFSET, todayInCinemaTz } from "@/lib/schedule";
 
 // ── Movies ─────────────────────────────────────────────────
 
@@ -55,38 +56,100 @@ export async function updateAdminMovie(id: string, data: AdminMovieUpdate) {
 
 // ── Dashboard ──────────────────────────────────────────────
 
-export async function getDashboardStats() {
-  const now = new Date();
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-  // Six independent queries in parallel: on Neon each round trip is noticeable
-  const [activeMovies, upcomingShowtimes, revenue, ticketsSold, ticketsUsed, recentPayments] =
-    await Promise.all([
-      prisma.movie.count({ where: { isActive: true } }),
-      prisma.showtime.count({ where: { startsAt: { gte: now } } }),
-      // Revenue = money actually paid, not Booking.totalAmount (PENDING bookings have totals too)
-      prisma.payment.aggregate({ where: { status: "SUCCESS" }, _sum: { amount: true } }),
-      prisma.ticket.count(),
-      prisma.ticket.count({ where: { status: "USED" } }),
-      prisma.payment.findMany({
-        where: { status: "SUCCESS" },
-        orderBy: { paidAt: "desc" },
-        take: 5,
-        include: {
-          booking: {
-            include: {
-              user: { select: { email: true } },
-              showtime: { select: { movie: { select: { title: true } } } },
-              _count: { select: { seats: true } },
-            },
-          },
-        },
-      }),
-    ]);
+/**
+ * Admin landing page. "Today" (Bangkok calendar day) comes first because that is what an admin
+ * acts on; all-time totals stay below as context.
+ */
+export async function getDashboardStats(now: Date = new Date()) {
+  const dayStart = new Date(`${todayInCinemaTz(now)}T00:00:00${CINEMA_UTC_OFFSET}`);
+  const dayEnd = new Date(dayStart.getTime() + DAY_MS);
+  const todayShows = { startsAt: { gte: dayStart, lt: dayEnd } };
 
-  return {
+  // Independent queries in parallel: on Neon each round trip is noticeable
+  const [
+    revenueToday,
+    bookingsToday,
+    seatsSoldToday,
+    showsToday,
+    admittedToday,
+    ticketsForTodaysShows,
+    upNext,
     activeMovies,
     upcomingShowtimes,
-    totalRevenue: Number(revenue._sum.amount ?? 0), // _sum is null when there are no payments
+    revenue,
+    ticketsSold,
+    ticketsUsed,
+    recentPayments,
+  ] = await Promise.all([
+    // Revenue = money actually paid, not Booking.totalAmount (PENDING bookings have totals too)
+    prisma.payment.aggregate({
+      where: { status: "SUCCESS", paidAt: { gte: dayStart, lt: dayEnd } },
+      _sum: { amount: true },
+    }),
+    prisma.booking.count({
+      where: { status: "PAID", payment: { status: "SUCCESS", paidAt: { gte: dayStart, lt: dayEnd } } },
+    }),
+    prisma.bookingSeat.count({
+      where: { booking: { status: "PAID", payment: { status: "SUCCESS", paidAt: { gte: dayStart, lt: dayEnd } } } },
+    }),
+    prisma.showtime.count({ where: todayShows }),
+    prisma.ticket.count({ where: { status: "USED", booking: { showtime: todayShows } } }),
+    prisma.ticket.count({ where: { booking: { showtime: todayShows } } }),
+    prisma.showtime.findMany({
+      where: { startsAt: { gte: now } },
+      orderBy: { startsAt: "asc" },
+      take: 5,
+      include: {
+        movie: { select: { title: true } },
+        screen: { select: { name: true, format: true, _count: { select: { seats: true } } } },
+        _count: { select: { seats: { where: { booking: { status: "PAID" } } } } },
+      },
+    }),
+    prisma.movie.count({ where: { isActive: true } }),
+    prisma.showtime.count({ where: { startsAt: { gte: now } } }),
+    prisma.payment.aggregate({ where: { status: "SUCCESS" }, _sum: { amount: true } }),
+    prisma.ticket.count(),
+    prisma.ticket.count({ where: { status: "USED" } }),
+    prisma.payment.findMany({
+      where: { status: "SUCCESS" },
+      orderBy: { paidAt: "desc" },
+      take: 5,
+      include: {
+        booking: {
+          include: {
+            user: { select: { email: true } },
+            showtime: { select: { movie: { select: { title: true } } } },
+            _count: { select: { seats: true } },
+          },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    day: todayInCinemaTz(now),
+    today: {
+      revenue: Number(revenueToday._sum.amount ?? 0), // _sum is null when there are no payments
+      bookings: bookingsToday, // one ticket (QR) per booking
+      seatsSold: seatsSoldToday,
+      shows: showsToday,
+      admitted: admittedToday,
+      ticketsForTodaysShows,
+    },
+    upNext: upNext.map((s) => ({
+      id: s.id,
+      movieTitle: s.movie.title,
+      screenName: s.screen.name,
+      screenFormat: s.screen.format,
+      startsAt: s.startsAt.toISOString(),
+      seatsSold: s._count.seats,
+      capacity: s.screen._count.seats,
+    })),
+    activeMovies,
+    upcomingShowtimes,
+    totalRevenue: Number(revenue._sum.amount ?? 0),
     ticketsSold,
     ticketsUsed,
     recentPayments: recentPayments.map((p) => ({

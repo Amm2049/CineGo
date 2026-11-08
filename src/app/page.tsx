@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isCustomer } from "@/lib/roles";
 import { getNowShowingMovies, getUpcomingMovies } from "@/services/movie.service";
 import { getMovieRecommendationsMap } from "@/services/recommendation.service";
 import HeroSpotlight from "@/components/movies/HeroSpotlight";
@@ -20,7 +21,8 @@ export default async function HomePage() {
     getUpcomingMovies({ limit: 5 }),
   ]);
 
-  const userId = session?.user?.id;
+  // AI matches are for customers; admin/staff accounts don't book (and shouldn't trigger Gemini)
+  const userId = isCustomer(session?.user?.role) ? session?.user?.id : undefined;
   const allMovieIds = [...nowShowingRaw.map((m) => m.id), ...upcomingRaw.map((m) => m.id)];
 
   // Read recommendations from DB cache (~2-5ms) or compute on-demand if missing

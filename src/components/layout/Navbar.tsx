@@ -5,12 +5,16 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
+import { homePathForRole, isCustomer } from "@/lib/roles";
 
 export default function Navbar() {
   const { data: session, status } = useSession();
   const isLoading = status === "loading";
   const isAdmin = session?.user?.role === "ADMIN";
   const isStaff = session?.user?.role === "STAFF";
+  const customer = isCustomer(session?.user?.role);
+  // Customers open their profile; admin/staff accounts open their work area (also the only way in on phones)
+  const accountHref = customer ? "/profile" : homePathForRole(session?.user?.role);
 
   const displayName =
     session?.user?.name ||
@@ -29,7 +33,7 @@ export default function Navbar() {
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-tight text-white flex items-center gap-1.5">
               Cine<span className="text-[#5938ff] font-extrabold cobalt-text-glow">Go</span>
-              <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-[#2500f0]/30 text-[#c7d2fe] border border-[#2500f0]/60 shadow-[0_0_12px_rgba(37,0,240,0.5)]">
+              <span className="hidden sm:inline text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-[#2500f0]/30 text-[#c7d2fe] border border-[#2500f0]/60 shadow-[0_0_12px_rgba(37,0,240,0.5)]">
                 Cinema
               </span>
             </span>
@@ -55,7 +59,7 @@ export default function Navbar() {
           >
             Experiences
           </Link>
-          {session && (
+          {session && customer && (
             <Link
               href="/tickets"
               className="text-xs font-semibold text-[#e2e8f0] hover:text-white px-3.5 py-1.5 rounded-full hover:bg-white/[0.08] transition-colors"
@@ -83,27 +87,32 @@ export default function Navbar() {
         </nav>
 
         {/* User Auth & Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {isLoading ? (
             <div className="h-9 w-24 rounded-xl bg-white/[0.06] animate-pulse" />
           ) : session ? (
             <>
               <Link
-                href="/profile"
+                href={accountHref}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl glass-chip text-xs font-semibold text-white hover:border-[#5938ff] transition-all"
-                title="View Profile"
+                title={customer ? "View Profile" : isAdmin ? "Open Admin" : "Open Scanner"}
               >
                 <span className="w-6 h-6 rounded-lg bg-[#2500f0]/60 border border-white/20 flex items-center justify-center text-[10px] font-black text-white uppercase">
                   {displayName.charAt(0)}
                 </span>
-                <span className="max-w-[120px] truncate text-[#c7d2fe]">
+                <span className="hidden sm:inline max-w-[120px] truncate text-[#c7d2fe]">
                   {displayName}
                 </span>
+                {!customer && (
+                  <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
+                    {isAdmin ? "Admin" : "Staff"}
+                  </span>
+                )}
               </Link>
               <button
                 type="button"
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="text-xs font-semibold text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl border border-white/10 hover:border-white/25 hover:bg-white/[0.06] transition-all"
+                className="whitespace-nowrap text-xs font-semibold text-zinc-300 hover:text-white px-2.5 sm:px-3.5 py-2 rounded-xl border border-white/10 hover:border-white/25 hover:bg-white/[0.06] transition-all"
               >
                 Sign Out
               </button>

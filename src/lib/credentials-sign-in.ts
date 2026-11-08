@@ -14,11 +14,12 @@ export type SignInOutcome = "ok" | "invalid" | "failed";
 export async function signInWithCredentials(
   email: string,
   password: string
-): Promise<SignInOutcome> {
+): Promise<{ outcome: SignInOutcome; role: string | null }> {
   for (let attempt = 0; attempt < 2; attempt++) {
     const result = await signIn("credentials", { email, password, redirect: false });
-    if (result?.error) return "invalid";
-    if (await getSession()) return "ok";
+    if (result?.error) return { outcome: "invalid", role: null };
+    const session = await getSession();
+    if (session) return { outcome: "ok", role: session.user?.role ?? null };
   }
-  return "failed";
+  return { outcome: "failed", role: null };
 }

@@ -2,8 +2,7 @@
 // Atomically hold seats for 5 minutes during checkout
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireCustomer } from "@/lib/admin-guard";
 import { holdShowtimeSeats } from "@/services/seat.service";
 import { closeExpiredPaymentsForSeats } from "@/services/payment.service";
 
@@ -12,13 +11,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Authentication required to hold seats" },
-        { status: 401 }
-      );
-    }
+    // Booking is for customer accounts: admin/staff get 403, guests 401
+    const auth = await requireCustomer();
+    if (!auth.ok) return auth.response;
 
     const { id: showtimeId } = await params;
     const body = await request.json();
@@ -34,12 +29,12 @@ export async function POST(
     // Phase 9: close PromptPay payments whose window is over before their seats can be taken.
     // Runs for every provider (one query when there are none) so switching back to the
     // simulated payment never leaves seats locked behind an old Stripe payment.
-    await closeExpiredPaymentsForSeats({ showtimeId, seatIds, userId: session.user.id });
+    await closeExpiredPaymentsForSeats({ showtimeId, seatIds, userId: auth.userId });
 
     const result = await holdShowtimeSeats({
       showtimeId,
       seatIds,
-      userId: session.user.id,
+      userId: auth.userId,
     });
 
     if (!result.success) {

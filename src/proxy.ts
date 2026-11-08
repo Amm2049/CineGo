@@ -1,10 +1,12 @@
 // src/proxy.ts
 // Route protection (Next.js 16 Proxy, formerly Middleware): /admin/* is ADMIN only, except
-// /admin/scanner which STAFF may also use. /api/admin/* is NOT matched: each API checks the role itself.
+// /admin/scanner which STAFF may also use. /profile and /tickets are CUSTOMER only.
+// APIs are NOT matched: each API checks the role itself (admin-guard.ts).
 // Unauthenticated users are redirected to /login with callbackUrl
 
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { homePathForRole, isCustomer } from "@/lib/roles";
 
 export async function proxy(req: NextRequest) {
   const token = await getToken({
@@ -42,6 +44,12 @@ export async function proxy(req: NextRequest) {
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
+    }
+
+    // Tickets and the customer profile are for customer accounts. /checkout is left to the page,
+    // which explains why admin/staff can't book instead of silently redirecting.
+    if (!isCustomer(token.role as string) && !pathname.startsWith("/checkout")) {
+      return NextResponse.redirect(new URL(homePathForRole(token.role as string), req.url));
     }
   }
 

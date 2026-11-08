@@ -2,8 +2,7 @@
 // Lightweight Next.js Route Handler delegating to user.service.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireCustomer } from "@/lib/admin-guard";
 import {
   getGenresWithUserSelection,
   updateUserInterests,
@@ -11,14 +10,12 @@ import {
 
 // GET /api/user/interests
 export async function GET() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Genre interests are a customer feature: admin/staff get 403, guests 401
+  const auth = await requireCustomer();
+  if (!auth.ok) return auth.response;
 
   try {
-    const items = await getGenresWithUserSelection(session.user.id);
+    const items = await getGenresWithUserSelection(auth.userId);
     return NextResponse.json({ genres: items });
   } catch (error) {
     console.error("Error fetching user genres:", error);
@@ -31,11 +28,9 @@ export async function GET() {
 
 // POST /api/user/interests
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Genre interests are a customer feature: admin/staff get 403, guests 401
+  const auth = await requireCustomer();
+  if (!auth.ok) return auth.response;
 
   try {
     const body = await req.json();
@@ -48,7 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await updateUserInterests(session.user.id, genreIds);
+    const result = await updateUserInterests(auth.userId, genreIds);
     return NextResponse.json({ success: true, count: result.count });
   } catch (error) {
     console.error("Error updating user interests:", error);
