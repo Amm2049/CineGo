@@ -175,7 +175,7 @@ Collected while testing; done after the manual checks.
   * Seat map page: a "Change showtime" link back to the picker.
   * Add it to the scope's page list; e2e test: pick tomorrow → a time → the right seat map opens.
 * [ ] **Scanner: recover from a camera error without reloading** — a "Try again" button that restarts the camera, plus short steps for allowing the camera (browser address-bar icon → Camera → Allow; Windows Settings → Privacy & security → Camera).
-* [ ] **Showtimes page UI/UX** *(review 2026-11-08; P3 ideas — timeline view, searchable movie select, styled delete dialog — kept as future work)*
+* [x] **Showtimes page UI/UX** *(P1+P2 done 2026-11-08, `feature/showtimes-ui`; also fixed the 414 px phone overflow)* *(review 2026-11-08; P3 ideas — timeline view, searchable movie select, styled delete dialog — kept as future work)*
   * P1: a clash disables "Create showtime" and shows a red error (not an amber hint), ideally with "Use next free time". The form's default start must not already clash.
   * P1: the form date and the schedule date stay in sync (picking another date in the form loads that day's schedule; the clash pre-check uses the right day).
   * P1: past shows dimmed, the current one tagged "Now playing".

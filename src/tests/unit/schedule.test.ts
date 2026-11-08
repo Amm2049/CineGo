@@ -5,6 +5,7 @@ import {
   cinemaDayOf,
   cinemaLocalToDate,
   formatCinemaDayLabel,
+  nextFreeStart,
   computeEndsAt,
   formatCinemaTime,
   rangesOverlap,
@@ -61,5 +62,27 @@ describe("showtime picker day helpers (Bangkok calendar)", () => {
     expect(formatCinemaDayLabel("2026-11-08", now)).toBe("Today");
     expect(formatCinemaDayLabel("2026-11-09", now)).toBe("Tomorrow");
     expect(formatCinemaDayLabel("2026-11-10", now)).toBe("Tue 10 Nov");
+  });
+});
+
+describe("nextFreeStart (Add showtime form)", () => {
+  const busy = [
+    { startsAt: t("11:00"), endsAt: t("13:00") },
+    { startsAt: t("13:30"), endsAt: t("15:30") }, // 13:00 + 25 min buffer = 13:25, so 13:30 is fine
+  ];
+  it("keeps the requested time when it's free", () => {
+    expect(nextFreeStart({ day: "2026-11-05", durationMinutes: 90, busy, from: t("16:00") })).toEqual(t("16:00"));
+  });
+  it("skips to the end of the cleaning buffer, rounded to 5 minutes", () => {
+    // 100 min from 13:25 would run into the 13:30 show, so the next gap is after 15:30 + 25 = 15:55
+    expect(nextFreeStart({ day: "2026-11-05", durationMinutes: 100, busy, from: t("12:00") })).toEqual(t("15:55"));
+  });
+  it("uses a gap between shows when the movie fits", () => {
+    const wide = [busy[0], { startsAt: t("17:00"), endsAt: t("19:00") }];
+    expect(nextFreeStart({ day: "2026-11-05", durationMinutes: 60, busy: wide, from: t("12:00") })).toEqual(t("13:25"));
+  });
+  it("returns null when nothing can start before midnight", () => {
+    const late = [{ startsAt: t("10:00"), endsAt: t("23:50") }];
+    expect(nextFreeStart({ day: "2026-11-05", durationMinutes: 90, busy: late, from: t("11:00") })).toBeNull();
   });
 });

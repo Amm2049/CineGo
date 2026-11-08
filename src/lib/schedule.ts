@@ -54,6 +54,11 @@ export function formatCinemaDayLabel(day: string, now: Date = new Date()): strin
   const today = todayInCinemaTz(now);
   if (day === today) return "Today";
   if (day === addCinemaDays(today, 1)) return "Tomorrow";
+  return formatCinemaDate(day);
+}
+
+/** "Sun 8 Nov" for a "YYYY-MM-DD" day. */
+export function formatCinemaDate(day: string): string {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: "UTC", // `day` is already a calendar date; noon UTC keeps it on that date
     weekday: "short",
@@ -83,4 +88,46 @@ export function formatCinemaTime(value: Date | string): string {
 /** "5 Nov, 19:30" in Bangkok time. */
 export function formatCinemaDateTime(value: Date | string): string {
   return dateTimeFormatter.format(new Date(value));
+}
+
+const SLOT_MINUTES = 5;
+
+/**
+ * Earliest start on `day` (Bangkok) at or after `from`, on a 5-minute mark, where a movie of
+ * `durationMinutes` fits around the screen's `busy` shows (with the cleaning buffer).
+ * Returns null when nothing fits before midnight. UX only; the server transaction is the rule.
+ */
+export function nextFreeStart(params: {
+  day: string;
+  durationMinutes: number;
+  busy: { startsAt: Date | string; endsAt: Date | string }[];
+  from: Date;
+}): Date | null {
+  const slot = SLOT_MINUTES * MINUTE_MS;
+  const roundUp = (t: number) => Math.ceil(t / slot) * slot;
+  const shows = params.busy.map((b) => ({ start: new Date(b.startsAt), end: new Date(b.endsAt) }));
+  // Candidates: the requested time, and the moment each show's cleaning buffer ends
+  const candidates = [
+    roundUp(params.from.getTime()),
+    ...shows.map((s) => roundUp(s.end.getTime() + CLEANING_BUFFER_MINUTES * MINUTE_MS)),
+  ]
+    .filter((t) => t >= params.from.getTime())
+    .sort((a, b) => a - b);
+
+  for (const t of candidates) {
+    const start = new Date(t);
+    if (cinemaDayOf(start) !== params.day) continue; // must start on that day
+    const end = computeEndsAt(start, params.durationMinutes);
+    if (!shows.some((s) => rangesOverlap(start, end, s.start, s.end))) return start;
+  }
+  return null;
+}
+
+/** "19:30" → minutes after midnight, and back. */
+export function hhmmToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+export function minutesToHhmm(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }

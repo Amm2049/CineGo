@@ -20,6 +20,14 @@ export default async function AdminShowtimesPage({
     listShowtimesForDay(day),
   ]);
 
-  // key={day}: remount the form when the day changes so its default start time follows
-  return <AdminShowtimesClient key={day} day={day} movies={movies} screens={screens} showtimes={showtimes} />;
+  // Not keyed by day: the form keeps its movie/theatre when the admin moves between days
+  return (
+    <AdminShowtimesClient
+      day={day}
+      nowIso={new Date().toISOString()} // one clock for "Now playing", server and client
+      movies={movies}
+      screens={screens}
+      showtimes={showtimes}
+    />
+  );
 }

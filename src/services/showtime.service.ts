@@ -114,7 +114,7 @@ export async function listShowtimesForDay(day: string) {
     orderBy: [{ screen: { number: "asc" } }, { startsAt: "asc" }],
     include: {
       movie: { select: { title: true } },
-      screen: { select: { id: true, name: true, format: true } },
+      screen: { select: { id: true, name: true, format: true, _count: { select: { seats: true } } } },
       _count: {
         select: {
           seats: { where: { booking: { status: "PAID" } } }, // seats actually sold
@@ -133,6 +133,7 @@ export async function listShowtimesForDay(day: string) {
     startsAt: s.startsAt.toISOString(),
     endsAt: s.endsAt.toISOString(),
     seatsSold: s._count.seats,
+    capacity: s.screen._count.seats,
     hasBookings: s._count.bookings > 0,
   }));
 }

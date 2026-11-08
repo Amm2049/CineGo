@@ -1,57 +1,104 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 // Values only from the pure schedule helpers; only a *type* from the service
 import type { AdminShowtimeRow } from "@/services/showtime.service";
 import {
   CLEANING_BUFFER_MINUTES,
+  addCinemaDays,
   cinemaLocalToDate,
   computeEndsAt,
+  formatCinemaDate,
   formatCinemaTime,
+  nextFreeStart,
   rangesOverlap,
+  todayInCinemaTz,
 } from "@/lib/schedule";
 import { useToasts, ToastStack } from "@/components/admin/Toasts";
 
 interface Props {
-  day: string;
+  day: string; // "YYYY-MM-DD", the one date shared by the form and the schedule
+  nowIso: string;
   movies: { id: string; title: string; duration: number }[];
   screens: { id: string; name: string; format: string }[];
   showtimes: AdminShowtimeRow[];
 }
 
-export default function AdminShowtimesClient({ day, movies, screens, showtimes }: Props) {
+const OPENING_TIME = "10:00"; // the earliest default start (the seed's first shows are at 11:00)
+const HOURS = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
+const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0"));
+
+export default function AdminShowtimesClient({ day, nowIso, movies, screens, showtimes }: Props) {
   const router = useRouter();
   const { toasts, push } = useToasts();
+  const now = new Date(nowIso);
+  const today = todayInCinemaTz(now);
+  const pastDay = day < today;
+
   const [movieId, setMovieId] = useState(movies[0]?.id ?? "");
   const [screenId, setScreenId] = useState(screens[0]?.id ?? "");
-  const [startLocal, setStartLocal] = useState(`${day}T19:00`);
+  // null = use the suggested free time; set once the admin picks a time themselves
+  const [chosenTime, setChosenTime] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Preview, derived on every render (never stored in state)
+  // Moving to another day drops a hand-picked time (React's "adjust state while rendering" pattern)
+  const [timeForDay, setTimeForDay] = useState(day);
+  if (timeForDay !== day) {
+    setTimeForDay(day);
+    setChosenTime(null);
+  }
+
   const movie = movies.find((m) => m.id === movieId);
-  const startsAt = startLocal ? cinemaLocalToDate(startLocal) : null;
-  const validStart = startsAt !== null && !Number.isNaN(startsAt.getTime());
-  const endsAt = movie && startsAt && validStart ? computeEndsAt(startsAt, movie.duration) : null;
-  // UX-only pre-check against the day on screen; the server's transaction is the real rule
+  const screen = screens.find((s) => s.id === screenId);
+  const busy = showtimes.filter((s) => s.screenId === screenId);
+
+  // Suggested start: the first free 5-minute mark from opening time (or from now, today)
+  const opening = cinemaLocalToDate(`${day}T${OPENING_TIME}`);
+  const suggested = movie
+    ? nextFreeStart({
+        day,
+        durationMinutes: movie.duration,
+        busy,
+        from: now > opening ? new Date(now.getTime() + 5 * 60_000) : opening,
+      })
+    : null;
+  const time = chosenTime ?? (suggested ? formatCinemaTime(suggested) : "");
+  const [hour, minute] = time ? time.split(":") : ["", ""];
+
+  // Preview, derived on every render (never stored in state)
+  const startsAt = time ? cinemaLocalToDate(`${day}T${time}`) : null;
+  const endsAt = movie && startsAt ? computeEndsAt(startsAt, movie.duration) : null;
   const clash =
-    startsAt && validStart && endsAt
-      ? showtimes.find(
-          (s) =>
-            s.screenId === screenId &&
-            rangesOverlap(startsAt, endsAt, new Date(s.startsAt), new Date(s.endsAt))
-        )
+    startsAt && endsAt
+      ? busy.find((s) => rangesOverlap(startsAt, endsAt, new Date(s.startsAt), new Date(s.endsAt)))
       : undefined;
+  const inPast = startsAt !== null && startsAt <= now;
+  // The next time that fits after the clash, for the "Use next free time" button
+  const nextAfterClash =
+    clash && movie && startsAt ? nextFreeStart({ day, durationMinutes: movie.duration, busy, from: startsAt }) : null;
+
+  let problem: string | null = null;
+  if (pastDay) problem = "This day is over. Pick today or a later date.";
+  else if (!time) problem = `${screen?.name ?? "This theatre"} has no free time left on this day.`;
+  else if (inPast) problem = "That time has already passed.";
+  else if (clash)
+    problem = `Clashes with ${clash.movieTitle} (${formatCinemaTime(clash.startsAt)}–${formatCinemaTime(clash.endsAt)}) in ${screen?.name}. Shows need ${CLEANING_BUFFER_MINUTES} min between them for cleaning.`;
+
+  function goToDay(next: string) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(next) && next !== day) router.push(`/admin/showtimes?date=${next}`);
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!startsAt || !validStart) return;
+    if (!startsAt || problem) return;
     setSaving(true);
     try {
       const res = await fetch("/api/admin/showtimes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Send an unambiguous UTC instant, never the raw datetime-local string
+        // Send an unambiguous UTC instant, never a local date-time string
         body: JSON.stringify({ movieId, screenId, startsAt: startsAt.toISOString() }),
       });
       const data = await res.json();
@@ -59,10 +106,9 @@ export default function AdminShowtimesClient({ day, movies, screens, showtimes }
         push("error", data.error ?? "Could not create showtime");
         return;
       }
-      push("success", `Scheduled ${movie?.title} at ${formatCinemaTime(startsAt)}`);
-      const newDay = startLocal.slice(0, 10);
-      if (newDay !== day) router.push(`/admin/showtimes?date=${newDay}`);
-      else router.refresh();
+      push("success", `Scheduled ${movie?.title} at ${formatCinemaTime(startsAt)} in ${screen?.name}`);
+      setChosenTime(null); // suggest the next free time again
+      router.refresh();
     } catch {
       push("error", "Network error");
     } finally {
@@ -71,7 +117,7 @@ export default function AdminShowtimesClient({ day, movies, screens, showtimes }
   }
 
   async function handleDelete(row: AdminShowtimeRow) {
-    if (!confirm(`Delete ${row.movieTitle} at ${formatCinemaTime(row.startsAt)}?`)) return;
+    if (!confirm(`Delete ${row.movieTitle} at ${formatCinemaTime(row.startsAt)} in ${row.screenName}?`)) return;
     try {
       const res = await fetch(`/api/admin/showtimes/${row.id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
@@ -86,13 +132,32 @@ export default function AdminShowtimesClient({ day, movies, screens, showtimes }
     }
   }
 
-  const inputCls = "w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white";
+  const inputCls = "w-full min-w-0 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white";
   const labelCls = "block text-xs font-semibold uppercase tracking-wider text-zinc-400";
+  const navBtn =
+    "flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/15 px-3 text-sm font-semibold text-zinc-200 hover:bg-white/[0.06] sm:min-h-9 sm:min-w-9";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      <form onSubmit={handleCreate} className="h-fit space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+    <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <form
+        onSubmit={handleCreate}
+        className="h-fit min-w-0 space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+      >
         <h1 className="text-xl font-black text-white">Add showtime</h1>
+
+        <label className={labelCls}>
+          Date
+          <input
+            type="date"
+            value={day}
+            min={today}
+            onChange={(e) => goToDay(e.target.value)}
+            className={`mt-1 ${inputCls}`}
+          />
+          <span className="mt-1 block text-[11px] normal-case tracking-normal text-zinc-500">
+            {formatCinemaDate(day)} · the schedule shows the same day
+          </span>
+        </label>
 
         <label className={labelCls}>
           Movie
@@ -106,7 +171,7 @@ export default function AdminShowtimesClient({ day, movies, screens, showtimes }
         </label>
 
         <label className={labelCls}>
-          Screen
+          Theatre
           <select value={screenId} onChange={(e) => setScreenId(e.target.value)} className={`mt-1 ${inputCls}`}>
             {screens.map((s) => (
               <option key={s.id} value={s.id}>
@@ -116,78 +181,160 @@ export default function AdminShowtimesClient({ day, movies, screens, showtimes }
           </select>
         </label>
 
-        <label className={labelCls}>
-          Starts (Bangkok time)
-          <input
-            type="datetime-local"
-            value={startLocal}
-            onChange={(e) => setStartLocal(e.target.value)}
-            className={`mt-1 ${inputCls}`}
-          />
-        </label>
+        <fieldset>
+          <legend className={labelCls}>Start time</legend>
+          <div className="mt-1 flex items-center gap-2">
+            <select
+              aria-label="Hour"
+              value={hour}
+              onChange={(e) => setChosenTime(`${e.target.value}:${minute || "00"}`)}
+              className={`${inputCls} font-mono`}
+            >
+              {!hour && <option value="">--</option>}
+              {HOURS.map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </select>
+            <span className="font-mono text-zinc-400">:</span>
+            <select
+              aria-label="Minute"
+              value={minute}
+              onChange={(e) => setChosenTime(`${hour || "00"}:${e.target.value}`)}
+              className={`${inputCls} font-mono`}
+            >
+              {!minute && <option value="">--</option>}
+              {MINUTES.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="mt-1 text-[11px] text-zinc-500">24-hour clock, Bangkok time (e.g. 19:30 = 7:30 pm)</p>
+        </fieldset>
 
-        {endsAt && (
+        {endsAt && !problem && (
           <p className="text-sm text-zinc-300">
-            Ends {formatCinemaTime(endsAt)} · screen free again at{" "}
+            {formatCinemaTime(startsAt!)}–{formatCinemaTime(endsAt)} · {screen?.name} free again at{" "}
             {formatCinemaTime(new Date(endsAt.getTime() + CLEANING_BUFFER_MINUTES * 60_000))}
           </p>
         )}
-        {clash && (
-          <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            Clashes with {clash.movieTitle} ({formatCinemaTime(clash.startsAt)}–{formatCinemaTime(clash.endsAt)}).
-          </p>
+        {problem && (
+          <div role="alert" className="space-y-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            <p>{problem}</p>
+            {clash &&
+              (nextAfterClash ? (
+                <button
+                  type="button"
+                  onClick={() => setChosenTime(formatCinemaTime(nextAfterClash))}
+                  className="min-h-9 rounded-lg border border-red-300/40 px-3 text-xs font-bold text-white hover:bg-red-500/20"
+                >
+                  Use next free time ({formatCinemaTime(nextAfterClash)})
+                </button>
+              ) : (
+                <p className="text-xs text-red-300">Nothing fits later on this day in {screen?.name}.</p>
+              ))}
+          </div>
         )}
 
         <button
           type="submit"
-          disabled={saving || !movieId || !screenId || !validStart}
-          className="btn-cobalt w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-50"
+          disabled={saving || !movieId || !screenId || problem !== null}
+          className="btn-cobalt min-h-11 w-full rounded-xl py-2.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
         >
           {saving ? "Saving…" : "Create showtime"}
         </button>
       </form>
 
-      <section className="space-y-4">
+      <section className="min-w-0 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-black text-white">Schedule</h2>
-          <input
-            type="date"
-            aria-label="Schedule date"
-            value={day}
-            onChange={(e) => e.target.value && router.push(`/admin/showtimes?date=${e.target.value}`)}
-            className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
-          />
+          <div>
+            <h2 className="text-xl font-black text-white">Schedule</h2>
+            <p className="text-sm text-zinc-400">
+              {day === today ? "Today · " : ""}
+              {formatCinemaDate(day)}
+            </p>
+          </div>
+          <nav aria-label="Change day" className="flex items-center gap-2">
+            <Link href={`/admin/showtimes?date=${addCinemaDays(day, -1)}`} aria-label="Previous day" className={navBtn}>
+              ‹
+            </Link>
+            {day === today ? (
+              <span className={`${navBtn} cursor-default opacity-40`} aria-disabled="true">
+                Today
+              </span>
+            ) : (
+              <Link href={`/admin/showtimes?date=${today}`} className={navBtn}>
+                Today
+              </Link>
+            )}
+            <Link href={`/admin/showtimes?date=${addCinemaDays(day, 1)}`} aria-label="Next day" className={navBtn}>
+              ›
+            </Link>
+          </nav>
         </div>
 
-        {screens.map((screen) => {
-          const rows = showtimes.filter((s) => s.screenId === screen.id);
+        {screens.map((theatre) => {
+          const rows = showtimes.filter((s) => s.screenId === theatre.id);
           return (
-            <div key={screen.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div key={theatre.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <h3 className="font-bold text-white">
-                {screen.name} <span className="ml-1 text-xs font-semibold text-[#c7d2fe]">{screen.format}</span>
+                {theatre.name} <span className="ml-1 text-xs font-semibold text-[#c7d2fe]">{theatre.format}</span>
               </h3>
               {rows.length === 0 ? (
                 <p className="mt-2 text-sm text-zinc-500">Nothing scheduled.</p>
               ) : (
                 <ul className="mt-2 divide-y divide-white/5">
-                  {rows.map((row) => (
-                    <li key={row.id} className="flex items-center gap-3 py-2 text-sm">
-                      <span className="w-28 shrink-0 font-mono text-zinc-200">
-                        {formatCinemaTime(row.startsAt)}–{formatCinemaTime(row.endsAt)}
-                      </span>
-                      <span className="flex-1 truncate text-white">{row.movieTitle}</span>
-                      <span className="text-xs text-zinc-400">{row.seatsSold} sold</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(row)}
-                        disabled={row.hasBookings}
-                        title={row.hasBookings ? "Has bookings" : "Delete"}
-                        className="rounded-lg px-2 py-1 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-30"
+                  {rows.map((row) => {
+                    const start = new Date(row.startsAt);
+                    const end = new Date(row.endsAt);
+                    const ended = end <= now;
+                    const playing = start <= now && now < end;
+                    const pct = row.capacity > 0 ? Math.round((row.seatsSold / row.capacity) * 100) : 0;
+                    return (
+                      <li
+                        key={row.id}
+                        className={`flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm ${ended ? "opacity-45" : ""}`}
                       >
-                        Delete
-                      </button>
-                    </li>
-                  ))}
+                        <span className="w-28 shrink-0 font-mono text-zinc-200">
+                          {formatCinemaTime(row.startsAt)}–{formatCinemaTime(row.endsAt)}
+                        </span>
+                        <span className="min-w-0 flex-1 basis-32 truncate text-white">
+                          {row.movieTitle}
+                          {playing && (
+                            <span className="ml-2 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-300">
+                              Now playing
+                            </span>
+                          )}
+                          {ended && <span className="ml-2 text-[11px] text-zinc-500">Ended</span>}
+                        </span>
+                        <span className="flex w-28 shrink-0 flex-col gap-1 text-xs text-zinc-400">
+                          <span className="tabular-nums">
+                            {row.seatsSold} / {row.capacity} sold
+                          </span>
+                          <span className="h-1 overflow-hidden rounded-full bg-white/10" aria-hidden>
+                            <span className="block h-full rounded-full bg-[#5938ff]" style={{ width: `${pct}%` }} />
+                          </span>
+                        </span>
+                        <span className="ml-auto flex w-24 shrink-0 justify-end">
+                          {row.hasBookings ? (
+                            <span className="text-xs text-zinc-500">Has bookings</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(row)}
+                              aria-label={`Delete ${row.movieTitle} at ${formatCinemaTime(row.startsAt)}`}
+                              className="min-h-11 rounded-lg px-3 text-xs text-zinc-400 hover:bg-red-500/10 hover:text-red-300 sm:min-h-8"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
