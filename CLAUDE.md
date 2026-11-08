@@ -20,6 +20,7 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 - Simulated payment: `confirmBookingPayment()` in `src/services/booking.service.ts` requires an active hold, re-prices from `Seat`, and writes Booking/Payment/Ticket in one `RepeatableRead` transaction. With Stripe, the only path to `PAID` is `settleSucceededPayment()` (Phase 9).
 - Ticket QR payload is `CINEGO:<ticketCode>` (UUID). Use `parseQrPayload()` from `ticket.service.ts` in the Phase 8 scanner — it also accepts a bare code typed manually.
 - `npm run test:concurrency` races holds/payments against the real DB (needs a future showtime; cleans up its own test users).
+- `npm run dev:ticket -- <customer email> [--seats N] [--within MIN]` (DEV ONLY, refuses in production): books a paid ticket for the next show starting within 60 min via the real hold → simulated-payment flow, and prints the ticket URL and code for scanner testing.
 - Seed creates `admin@cinego.com` / `admin123`. Re-running the seed wipes ALL data, including users.
 
 ## Screens / theatres

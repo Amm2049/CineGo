@@ -14,7 +14,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:concurrency":"tsx scripts/concurrency-test.ts",
     "test:e2e": "playwright test",
-    "stripe:listen": "node scripts/stripe-listen.mjs",
+    "dev:ticket": "tsx scripts/dev-ticket.ts",
+    "stripe:listen":"node scripts/stripe-listen.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
