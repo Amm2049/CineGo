@@ -108,6 +108,7 @@ Log in as **admin** in the incognito window.
 * [ ] **Movies:** edit a title → shown on `/movies`; run the TMDB sync → your edited title is **not** overwritten.
 * [ ] **Movies:** deactivate a movie → it disappears from `/` and `/movies`; reactivate → it's back.
 * [ ] **Movies:** a customer bought a ticket for a movie, then you deactivate it → the ticket is still in their My Tickets and still scans. Also try booking that movie from a seat map that was already open (known gap, in the step 4 list; note what happens).
+* Tip: the seeded showtimes end on 15 Nov 2026. Set the Schedule date to **16 Nov or later** for the add/overlap/delete checks: every theatre is empty there.
 * [ ] **Showtimes:** add a showtime → appears in the schedule and on the movie's page for customers.
 * [ ] **Showtimes:** add one that overlaps another in the same theatre (including the 25-min cleaning gap) → refused with a clear message.
 * [ ] **Showtimes:** delete a showtime without bookings → removed; try deleting one **with** bookings → refused.
@@ -167,6 +168,13 @@ Collected while testing; done after the manual checks.
   * Admin Movies → Deactivate shows a confirmation with the number of tickets sold for upcoming showtimes, and says those tickets stay valid.
   * No sold tickets → deactivate right away, as now.
   * *Out of scope:* actually cancelling a show and refunding its tickets (no such feature exists; mention as future work in the report).
+* [ ] **P1 — Customers can choose a showtime** *(found 2026-11-08: a movie card links straight to ONE arbitrary showtime — `getNowShowingMovies()` takes `showtimes[0]` with no `orderBy` — so customers can't pick the date, time or theatre; not in the scope's page list (`CiniGo_Scope.md` §4.1), so it was never built)*
+  * Movie → showtime picker: a date strip (Today, Tomorrow, … up to the last scheduled day) → times grouped by theatre/format, each linking to `/checkout/<showtimeId>`.
+  * Past showtimes hidden; sold-out ones shown but disabled; Bangkok time.
+  * Showtimes always ordered by `startsAt` wherever a "next showtime" is used.
+  * Seat map page: a "Change showtime" link back to the picker.
+  * Add it to the scope's page list; e2e test: pick tomorrow → a time → the right seat map opens.
+* [ ] **Scanner: recover from a camera error without reloading** — a "Try again" button that restarts the camera, plus short steps for allowing the camera (browser address-bar icon → Camera → Allow; Windows Settings → Privacy & security → Camera).
 * [ ] **Showtimes page UI/UX** *(review 2026-11-08; P3 ideas — timeline view, searchable movie select, styled delete dialog — kept as future work)*
   * P1: a clash disables "Create showtime" and shows a red error (not an amber hint), ideally with "Use next free time". The form's default start must not already clash.
   * P1: the form date and the schedule date stay in sync (picking another date in the form loads that day's schedule; the clash pre-check uses the right day).
