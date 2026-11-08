@@ -51,9 +51,16 @@ test("staff can use the scanner but nothing else", async ({ page }) => {
 test("the scanner rejects a code that is not a CineGo ticket", async ({ page }) => {
   await login(page, "admin@cinego.com", "admin123");
   await page.goto("/admin/scanner");
-  await page.getByPlaceholder(/paste the ticket code/i).fill("hello");
+  await page.getByLabel("Enter a code instead").fill("hello");
   await page.getByRole("button", { name: "Verify" }).click();
-  await expect(page.getByText("This is not a CineGo ticket.", { exact: true })).toBeVisible();
+  const result = page.getByRole("status");
+  await expect(result.getByText("This is not a CineGo ticket.", { exact: true })).toBeVisible();
+  await expect(result).toContainText("Ask them to open the ticket under My Tickets"); // what to do next
+  // Recent scans use the human label, not the raw INVALID_CODE outcome
+  await expect(page.getByRole("listitem").filter({ hasText: "Not a CineGo ticket" })).toBeVisible();
+  await expect(page.getByText("INVALID_CODE")).toHaveCount(0);
+  await result.getByRole("button", { name: "Scan next ticket" }).click();
+  await expect(page.getByRole("status")).toHaveCount(0);
 });
 
 test("guests get 401 from admin APIs and the cron route", async ({ request }) => {

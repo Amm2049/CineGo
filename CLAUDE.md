@@ -41,6 +41,7 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 - Sync never overwrites `Movie.title/description/isActive` (admin-owned). Inactive movies are hidden, not deleted.
 - Admin Showtimes form (Phase 10): the form date IS the schedule date (`?date=`); times are hour/minute selects (24 h, Bangkok); the default start comes from `nextFreeStart()` in `schedule.ts`; a clash, a past time or a past day disables Create (red error, "Use next free time"). The client pre-check only sees that day's shows; the server transaction stays the rule.
 - Showtime creation runs at Serializable (overlap = write skew), retried up to 3x on P2034, backed by `@@index([screenId, startsAt])`. 25-min cleaning buffer lives in `src/lib/schedule.ts`.
+- Scanner UI (Phase 10): the result covers the paused camera; labels and next steps per outcome live in `OUTCOMES` in `ScannerClient.tsx`. `QrScanner` restarts the camera on "Try again" by bumping an `attempt` key (fresh element + effect). Headless Chrome can't flip a denied camera to allowed; to test the retry, make the first `getUserMedia` call reject via an init script.
 - Ticket scan uses `updateMany WHERE status=ACTIVE` (compare-and-set); never read-then-update. It records `usedAt` and `scannedById` (from the session, never the body).
 - Server components must format times with `timeZone: Asia/Bangkok` (Vercel runs in UTC). Use helpers in `src/lib/schedule.ts`.
 - Prisma 7: `migrate dev` does not regenerate the client — run `npx prisma generate` after schema changes.

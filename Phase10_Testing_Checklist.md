@@ -174,7 +174,7 @@ Collected while testing; done after the manual checks.
   * Showtimes always ordered by `startsAt` wherever a "next showtime" is used.
   * Seat map page: a "Change showtime" link back to the picker.
   * Add it to the scope's page list; e2e test: pick tomorrow → a time → the right seat map opens.
-* [ ] **Scanner: recover from a camera error without reloading** — a "Try again" button that restarts the camera, plus short steps for allowing the camera (browser address-bar icon → Camera → Allow; Windows Settings → Privacy & security → Camera).
+* [x] **Scanner: recover from a camera error without reloading** *(done 2026-11-08, `feature/scanner-ui`)* — a "Try again" button that restarts the camera, plus short steps for allowing the camera (browser address-bar icon → Camera → Allow; Windows Settings → Privacy & security → Camera).
 * [x] **Showtimes page UI/UX** *(P1+P2 done 2026-11-08, `feature/showtimes-ui`; also fixed the 414 px phone overflow)* *(review 2026-11-08; P3 ideas — timeline view, searchable movie select, styled delete dialog — kept as future work)*
   * P1: a clash disables "Create showtime" and shows a red error (not an amber hint), ideally with "Use next free time". The form's default start must not already clash.
   * P1: the form date and the schedule date stay in sync (picking another date in the form loads that day's schedule; the clash pre-check uses the right day).
@@ -183,7 +183,7 @@ Collected while testing; done after the manual checks.
   * P2: quieter delete control, ≥ 44 px tap targets on mobile, disabled reason shown as visible text ("Has bookings"), not only a hover tooltip.
   * P2: day navigation with ‹ Today › buttons and the weekday ("Sun 8 Nov").
   * P2: consistent wording ("Theatre" in the form too) and a clear 24-hour time hint.
-* [ ] **Ticket scanner UI/UX** *(review 2026-11-08; P3 ideas — auto-continue after Admit, camera switch, staff fullscreen mode — kept as future work)*
+* [x] **Ticket scanner UI/UX** *(P1+P2 done 2026-11-08, `feature/scanner-ui`)* *(review 2026-11-08; P3 ideas — auto-continue after Admit, camera switch, staff fullscreen mode — kept as future work)*
   * P1: the result covers the camera area while paused, so it is visible without scrolling on a phone.
   * P1: for Admit, the number of people is prominent: "ADMIT 3 · F4, F5, F6" (one ticket covers the whole booking).
   * P2: larger camera on desktop and a ready message ("Ready — hold the ticket QR inside the frame") instead of an empty right column.
