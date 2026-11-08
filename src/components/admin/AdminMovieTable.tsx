@@ -78,7 +78,7 @@ export default function AdminMovieTable({ movies, busy, onChanged, onError }: Pr
             <tr key={movie.id} className={movie.isActive ? "" : "opacity-60"}>
               <td className="px-4 py-3">
                 <div className="flex items-start gap-3">
-                  <Image src={movie.posterUrl} alt="" width={36} height={54} className="rounded object-cover" />
+                  <Image src={movie.posterUrl} alt="" width={36} height={54} className="h-[54px] w-9 shrink-0 rounded object-cover" />
                   {editingId === movie.id ? (
                     <div className="flex-1 space-y-2">
                       <input

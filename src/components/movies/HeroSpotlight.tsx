@@ -49,7 +49,9 @@ export default function HeroSpotlight({ movies }: HeroSpotlightProps) {
             src={m.backdropUrl || m.posterUrl}
             alt={m.title}
             fill
-            priority={idx === 0}
+            sizes="100vw"
+            loading={idx === 0 ? "eager" : "lazy"}
+            fetchPriority={idx === 0 ? "high" : "auto"}
             className="object-cover object-center scale-105"
           />
           {/* Dynamic multi-stop lighting vignette */}

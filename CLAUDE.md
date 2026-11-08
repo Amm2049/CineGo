@@ -44,6 +44,8 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 - Scanner UI (Phase 10): the result covers the paused camera; labels and next steps per outcome live in `OUTCOMES` in `ScannerClient.tsx`. `QrScanner` restarts the camera on "Try again" by bumping an `attempt` key (fresh element + effect). Headless Chrome can't flip a denied camera to allowed; to test the retry, make the first `getUserMedia` call reject via an init script.
 - Ticket scan uses `updateMany WHERE status=ACTIVE` (compare-and-set); never read-then-update. It records `usedAt` and `scannedById` (from the session, never the body).
 - Server components must format times with `timeZone: Asia/Bangkok` (Vercel runs in UTC). Use helpers in `src/lib/schedule.ts`.
+- Known warning, not ours: pg 8.23 prints "Calling client.query() when the client is already executing a query" during transactions. Prisma 7.10's query interpreter runs a nested `include`'s child queries with `Promise.all` on the transaction's single connection; pg 8 queues them, so results are correct. Keep `pg` on `^8` until Prisma fixes this (pg 9 will make it an error). Don't hide the warning.
+- Images (Next 16): `priority` is deprecated; mark the LCP image with `loading="eager"` + `fetchPriority="high"` (MovieCard `priority` prop does this). Fixed-size thumbnails in flex rows need both dimensions in CSS plus `shrink-0`. `<html>` has `data-scroll-behavior="smooth"` because globals.css sets smooth scrolling.
 - Prisma 7: `migrate dev` does not regenerate the client — run `npx prisma generate` after schema changes.
 - Production deploys run `prisma migrate deploy` automatically (`scripts/vercel-build.mjs`, `DIRECT_URL`). Never run the seed against production.
 

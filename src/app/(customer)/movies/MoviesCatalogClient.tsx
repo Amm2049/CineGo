@@ -86,7 +86,7 @@ export default function MoviesCatalogClient({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
-          {filteredMovies.map((movie) => {
+          {filteredMovies.map((movie, idx) => {
             const rec = recommendations[movie.id];
             return (
               <div key={movie.id} id={`movie-${movie.id}`}>
@@ -100,6 +100,7 @@ export default function MoviesCatalogClient({
                   formats={movie.formats}
                   matchScore={rec?.matchScore}
                   isUpcoming={movie.isUpcoming}
+                  priority={idx < 5} // the first row (5 columns on desktop) is above the fold
                 />
               </div>
             );

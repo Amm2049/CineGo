@@ -46,7 +46,8 @@ export default function MovieCard({
           alt=""
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          priority={priority}
+          loading={priority ? "eager" : "lazy"} // first row: it's the LCP image
+          fetchPriority={priority ? "high" : "auto"}
           className="object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
         />
 

@@ -99,7 +99,7 @@ export default function TmdbSearchPanel({ disabled, onImported, onError }: Props
           {results.map((r) => (
             <li key={r.tmdbId} className="flex items-center gap-3 py-2.5">
               {r.posterUrl ? (
-                <Image src={r.posterUrl} alt="" width={36} height={54} className="rounded object-cover" />
+                <Image src={r.posterUrl} alt="" width={36} height={54} className="h-[54px] w-9 shrink-0 rounded object-cover" />
               ) : (
                 <div className="h-[54px] w-9 rounded bg-white/10" />
               )}

@@ -194,7 +194,7 @@ Collected while testing; done after the manual checks.
 * [x] **Recheck admin landing page priority and nav order** *(done 2026-11-08, `feature/staff-cannot-book`)*
   * Where admin/staff land after logging in (today: the customer home page `/`; staff → scanner?). Connects to the "admin/staff can't book" item.
   * Admin nav order (today: Dashboard · Movies · Showtimes · Ticket Scanner): order it by how often each page is used and what matters most on the dashboard; decide whether the site's customer nav (Movies, Experiences, My Tickets) should show for admin/staff at all.
-* [ ] Warnings from section 9 (LCP poster image, `data-scroll-behavior`, next/image width/height) and the pg "client.query() while already executing" warning in the concurrency script.
+* [x] *(done 2026-11-08, `feature/warnings`: browser console now clean on all main pages; the pg warning comes from Prisma, documented in CLAUDE.md)* Warnings from section 9 (LCP poster image, `data-scroll-behavior`, next/image width/height) and the pg "client.query() while already executing" warning in the concurrency script.
 
 ---
 

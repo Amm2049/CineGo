@@ -32,6 +32,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth" // globals.css sets smooth scrolling; Next turns it off during route changes
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-[#03030d] text-[#ffffff] selection:bg-[#2500f0] selection:text-white relative">
