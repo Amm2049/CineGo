@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { signInWithCredentials } from "@/lib/credentials-sign-in";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -185,6 +186,8 @@ export default function RegisterPage() {
               )}
             </button>
           </form>
+
+          <GoogleSignInButton disabled={loading} />
 
           <p className="text-center text-xs text-[#c7d2fe] font-medium mt-5">
             Already a member?{" "}

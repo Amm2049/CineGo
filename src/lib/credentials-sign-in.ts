@@ -8,8 +8,10 @@
 // retry is enough.
 
 import { getSession, signIn } from "next-auth/react";
+import { USE_GOOGLE_ERROR } from "./google-sign-in";
 
-export type SignInOutcome = "ok" | "invalid" | "failed";
+/** "google" = the account was created with "Continue with Google" and has no password. */
+export type SignInOutcome = "ok" | "invalid" | "google" | "failed";
 
 export async function signInWithCredentials(
   email: string,
@@ -17,6 +19,7 @@ export async function signInWithCredentials(
 ): Promise<{ outcome: SignInOutcome; role: string | null }> {
   for (let attempt = 0; attempt < 2; attempt++) {
     const result = await signIn("credentials", { email, password, redirect: false });
+    if (result?.error === USE_GOOGLE_ERROR) return { outcome: "google", role: null };
     if (result?.error) return { outcome: "invalid", role: null };
     const session = await getSession();
     if (session) return { outcome: "ok", role: session.user?.role ?? null };

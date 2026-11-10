@@ -3,11 +3,39 @@
 // src/app/(auth)/login/page.tsx
 // Login page — credentials sign-in via NextAuth
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signInWithCredentials } from "@/lib/credentials-sign-in";
+import { GOOGLE_SIGN_IN_ERRORS, type GoogleSignInRefusal } from "@/lib/google-sign-in";
 import { postLoginPath } from "@/lib/roles";
-import { useRouter } from "next/navigation";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+
+const USE_GOOGLE_MESSAGE = "This account was created with Google. Use “Continue with Google” below.";
+
+/** Message for `/login?error=...` (our Google refusals, or NextAuth's own OAuth error codes). */
+function messageForErrorParam(code: string | null): string {
+  if (!code) return "";
+  if (code in GOOGLE_SIGN_IN_ERRORS) return GOOGLE_SIGN_IN_ERRORS[code as GoogleSignInRefusal];
+  return "We couldn't sign you in with Google. Please try again.";
+}
+
+function ErrorBox({ message }: { message: string }) {
+  return (
+    <div className="text-xs text-red-300 bg-red-950/50 border border-red-700/60 rounded-xl px-3.5 py-2.5 flex items-center gap-2">
+      <svg className="w-4 h-4 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      </svg>
+      {message}
+    </div>
+  );
+}
+
+/** Shown after a refused or failed Google sign-in (`/login?error=...`). */
+function ErrorFromUrl() {
+  const message = messageForErrorParam(useSearchParams().get("error"));
+  return message ? <ErrorBox message={message} /> : null;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,6 +61,8 @@ export default function LoginPage() {
       router.refresh();
     } else if (outcome === "invalid") {
       setError("Invalid email or password. Please try again.");
+    } else if (outcome === "google") {
+      setError(USE_GOOGLE_MESSAGE);
     } else {
       setError("We couldn't sign you in. Please try again.");
     }
@@ -61,14 +91,13 @@ export default function LoginPage() {
         {/* Specular Frosted Cobalt Glass Card */}
         <div className="glass-panel-cobalt rounded-2xl p-6 sm:p-7 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Error Message */}
-            {error && (
-              <div className="text-xs text-red-300 bg-red-950/50 border border-red-700/60 rounded-xl px-3.5 py-2.5 flex items-center gap-2">
-                <svg className="w-4 h-4 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                </svg>
-                {error}
-              </div>
+            {/* Error Message: this form's own error, else one passed back in the URL by a Google sign-in */}
+            {error ? (
+              <ErrorBox message={error} />
+            ) : (
+              <Suspense fallback={null}>
+                <ErrorFromUrl />
+              </Suspense>
             )}
 
             {/* Email */}
@@ -127,6 +156,8 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          <GoogleSignInButton disabled={loading} />
 
           <p className="text-center text-xs text-[#c7d2fe] font-medium mt-5">
             New to CineGo?{" "}

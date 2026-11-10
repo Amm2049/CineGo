@@ -48,7 +48,7 @@ model User {
   id                       String         @id @default(uuid())
   email                    String         @unique
   name                     String?
-  passwordHash             String
+  passwordHash             String? // null for accounts created with "Continue with Google"
   role                     Role           @default(CUSTOMER)
   recommendations          Json?
   recommendationsUpdatedAt DateTime?
