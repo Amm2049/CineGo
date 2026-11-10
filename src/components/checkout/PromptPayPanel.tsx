@@ -17,7 +17,7 @@ const fetcher = async (url: string): Promise<PaymentStatusResponse> => {
 
 interface Props {
   checkout: PromptPayCheckout;
-  onPaid: (ticketId: string) => void;
+  onPaid: (bookingId: string) => void; // its tickets (one per seat) are at /tickets/<bookingId>
   onClosed: (message: string) => void;
 }
 
@@ -29,8 +29,8 @@ export default function PromptPayPanel({ checkout, onPaid, onClosed }: Props) {
   const handleStatus = (status: PaymentStatusResponse) => {
     if (finishedRef.current || status.status === "PENDING") return;
     finishedRef.current = true;
-    if (status.status === "SUCCESS" && status.ticketId) {
-      onPaid(status.ticketId);
+    if (status.status === "SUCCESS" && status.bookingId) {
+      onPaid(status.bookingId);
     } else {
       onClosed(
         status.message ??

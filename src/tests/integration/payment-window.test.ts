@@ -198,7 +198,7 @@ async function deliverSucceededWebhook(intentId: string) {
 async function bookingState(bookingId: string) {
   return prisma.booking.findUniqueOrThrow({
     where: { id: bookingId },
-    include: { payment: true, seats: true, ticket: true },
+    include: { payment: true, seats: true, tickets: true },
   });
 }
 
@@ -288,7 +288,7 @@ describe("PromptPay payment window (10 min + 2 min grace)", () => {
     // PromptPayPanel calls the cancel route when its countdown hits 0
     const result = await cancelPaymentForUser(paymentId, customer);
     expect(result?.status).toBe("CANCELLED");
-    expect(result?.ticketId).toBeNull();
+    expect(result?.bookingId).toBeNull();
 
     // The QR can no longer be paid
     expect(fake.api.paymentIntents.cancel).toHaveBeenCalledWith(intentId);
@@ -298,7 +298,7 @@ describe("PromptPay payment window (10 min + 2 min grace)", () => {
     expect(state.payment!.status).toBe("CANCELLED");
     expect(state.status).toBe("EXPIRED"); // window ran out, not a customer cancel
     expect(state.seats).toHaveLength(0);
-    expect(state.ticket).toBeNull();
+    expect(state.tickets).toHaveLength(0);
 
     // Paying again needs new seats; the old ones are free for anyone
     const retry = await startStripePayment({ userId: customer, showtimeId: showtime.id });
@@ -338,7 +338,7 @@ describe("PromptPay payment window (10 min + 2 min grace)", () => {
     expect(seat.bookingId).toBe(hold.bookingId);
   });
 
-  it("a payment made at the last second wins the race with the cancel and gets a ticket", async () => {
+  it("a payment made at the last second wins the race with the cancel and gets its tickets", async () => {
     const seatIds = await freeSeats(2);
     const { paymentId, intentId, bookingId } = await startPayment(customer, seatIds);
     fake.pay(intentId); // customer pays…
@@ -346,14 +346,16 @@ describe("PromptPay payment window (10 min + 2 min grace)", () => {
 
     const result = await cancelPaymentForUser(paymentId, customer);
     expect(result?.status).toBe("SUCCESS");
-    expect(result?.ticketId).toBeTruthy();
+    expect(result?.bookingId).toBe(bookingId);
 
     const state = await bookingState(bookingId);
     expect(state.status).toBe("PAID");
     expect(state.payment!.status).toBe("SUCCESS");
     expect(state.seats).toHaveLength(2);
     expect(state.seats.every((bs) => bs.heldUntil === null)).toBe(true);
-    expect(state.ticket?.id).toBe(result?.ticketId);
+    // One ticket (QR) per seat
+    expect(state.tickets).toHaveLength(2);
+    expect(new Set(state.tickets.map((t) => t.bookingSeatId))).toEqual(new Set(state.seats.map((bs) => bs.id)));
     expect(fake.api.refunds.create).not.toHaveBeenCalled();
   });
 });
@@ -387,7 +389,7 @@ describe("late payment after the seats were taken", () => {
     expect(state.payment!.status).toBe("REFUNDED");
     expect(state.payment!.refundedAt).toBeInstanceOf(Date);
     expect(state.status).toBe("EXPIRED");
-    expect(state.ticket).toBeNull();
+    expect(state.tickets).toHaveLength(0);
     expect(state.seats).toHaveLength(0); // the seat the rival didn't take is released too
 
     expect(fake.api.refunds.create).toHaveBeenCalledTimes(1);
@@ -428,7 +430,7 @@ describe("late payment after the seats were taken", () => {
     const state = await bookingState(bookingId);
     expect(state.payment!.status).toBe("REFUNDED");
     expect(await prisma.payment.count({ where: { bookingId } })).toBe(1);
-    expect(state.ticket).toBeNull();
+    expect(state.tickets).toHaveLength(0);
   });
 });
 
@@ -484,7 +486,7 @@ describe("a hidden (deactivated) movie", () => {
       await deliverSucceededWebhook(intentId!);
       const state = await bookingState(bookingId);
       expect(state.status).toBe("PAID");
-      expect(state.ticket).not.toBeNull();
+      expect(state.tickets).toHaveLength(1);
       expect(fake.api.refunds.create).not.toHaveBeenCalled();
     });
   });

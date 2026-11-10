@@ -95,7 +95,7 @@ async function main() {
     const paid = payments.filter((p) => p.success).length;
     const tickets = await prisma.ticket.count({ where: { booking: { userId: payer } } });
     check("Double payment: exactly one succeeds", paid === 1, `${paid} succeeded`);
-    check("Double payment: exactly one ticket issued", tickets === 1, `${tickets} tickets`);
+    check("Double payment: one ticket per seat (1 seat, 1 ticket)", tickets === 1, `${tickets} tickets`);
 
     // 3. A paid seat can't be held by anyone else
     const steal = await holdShowtimeSeats({

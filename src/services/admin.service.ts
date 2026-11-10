@@ -23,11 +23,11 @@ export async function listAdminMovies() {
     }),
   ]);
 
-  const sold = new Map<string, { tickets: number; seats: number }>();
+  const sold = new Map<string, { tickets: number; bookings: number }>();
   for (const b of paidUpcoming) {
-    const entry = sold.get(b.showtime.movieId) ?? { tickets: 0, seats: 0 };
-    entry.tickets += 1; // one ticket (QR) per booking
-    entry.seats += b._count.seats;
+    const entry = sold.get(b.showtime.movieId) ?? { tickets: 0, bookings: 0 };
+    entry.tickets += b._count.seats; // one ticket (QR) per seat
+    entry.bookings += 1;
     sold.set(b.showtime.movieId, entry);
   }
 
@@ -43,7 +43,7 @@ export async function listAdminMovies() {
     isActive: m.isActive,
     upcomingShowtimes: m._count.showtimes,
     upcomingTicketsSold: sold.get(m.id)?.tickets ?? 0,
-    upcomingSeatsSold: sold.get(m.id)?.seats ?? 0,
+    upcomingBookings: sold.get(m.id)?.bookings ?? 0,
   }));
 }
 
@@ -149,7 +149,7 @@ export async function getDashboardStats(now: Date = new Date()) {
     day: todayInCinemaTz(now),
     today: {
       revenue: Number(revenueToday._sum.amount ?? 0), // _sum is null when there are no payments
-      bookings: bookingsToday, // one ticket (QR) per booking
+      bookings: bookingsToday, // tickets are per seat: see seatsSold / ticketsForTodaysShows
       seatsSold: seatsSoldToday,
       shows: showsToday,
       admitted: admittedToday,

@@ -137,8 +137,7 @@ export interface PaymentRequest {
 
 export interface PaymentResponse {
   success: boolean;
-  bookingId: string;
-  ticketId: string;
+  bookingId: string; // its tickets (one per seat) are at /tickets/<bookingId>
   amount: number;
 }
 
@@ -159,22 +158,32 @@ export interface PromptPayCheckout {
 
 /** POST /api/payments response: simulated pays at once, Stripe returns a QR to scan. */
 export type StartPaymentResponse =
-  | { provider: "simulated"; success: true; bookingId: string; ticketId: string; amount: number }
+  | { provider: "simulated"; success: true; bookingId: string; amount: number }
   | { provider: "stripe"; success: true; checkout: PromptPayCheckout };
 
 /** GET /api/payments/[id] and POST /api/payments/[id]/cancel response. */
 export interface PaymentStatusResponse {
   paymentId: string;
   status: PaymentStatusName;
-  ticketId: string | null;
+  bookingId: string | null; // set once paid: the tickets are at /tickets/<bookingId>
   message: string | null;
 }
 
-export interface TicketPass {
+/** One seat's ticket: its own QR, scanned on its own at the door. */
+export interface SeatTicket {
   id: string;
   ticketCode: string;
   qrPayload: string;
   status: "ACTIVE" | "USED";
+  usedAt: string | null;
+  label: string; // e.g. "F6"
+  tier: SeatTier;
+  price: number;
+}
+
+/** A paid booking as the customer sees it: one pass with a ticket (QR) per seat. */
+export interface TicketPass {
+  id: string; // booking id (URL: /tickets/<id>)
   issuedAt: string;
   bookingReference: string;
   totalAmount: number;
@@ -192,9 +201,5 @@ export interface TicketPass {
     posterUrl: string;
     duration: number;
   };
-  seats: {
-    label: string;
-    tier: SeatTier;
-    price: number;
-  }[];
+  seats: SeatTicket[]; // sorted by row, then seat number
 }

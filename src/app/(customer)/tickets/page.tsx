@@ -1,5 +1,5 @@
 // src/app/(customer)/tickets/page.tsx
-// My Tickets — booking history with upcoming and past ticket passes
+// My Tickets — one row per paid booking (each has a ticket per seat), upcoming and past
 
 import Image from "next/image";
 import Link from "next/link";
@@ -14,7 +14,11 @@ export const dynamic = "force-dynamic";
 
 function TicketRow({ ticket, isPast }: { ticket: TicketPass; isPast: boolean }) {
   const startsAt = new Date(ticket.showtime.startsAt);
-  const statusLabel = ticket.status === "USED" ? "Used" : isPast ? "Ended" : "Upcoming";
+  // One ticket per seat: "Used" once every seat is in, "2/4 used" while some are
+  const used = ticket.seats.filter((s) => s.status === "USED").length;
+  const total = ticket.seats.length;
+  const statusLabel =
+    used === total ? "Used" : isPast ? "Ended" : used > 0 ? `${used}/${total} used` : "Upcoming";
 
   return (
     <Link
@@ -47,9 +51,10 @@ function TicketRow({ ticket, isPast }: { ticket: TicketPass; isPast: boolean }) 
           {ticket.showtime.screenName} · {ticket.showtime.screenFormat}
         </p>
         <p className="text-sm text-zinc-400 mt-0.5 truncate">
-          Seat{ticket.seats.length > 1 ? "s" : ""} {ticket.seats.map((s) => s.label).join(", ")}
-          <span className="font-mono"> · {ticket.bookingReference}</span>
+          {total > 1 ? `${total} tickets · ` : "Seat "}
+          {ticket.seats.map((s) => s.label).join(", ")}
         </p>
+        <p className="text-xs text-zinc-500 font-mono mt-0.5">{ticket.bookingReference}</p>
       </div>
       {/* Upcoming is already the section heading, so only flag Used / Ended */}
       {statusLabel !== "Upcoming" ? (

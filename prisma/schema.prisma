@@ -154,7 +154,7 @@ model Booking {
   showtime    Showtime      @relation(fields: [showtimeId], references: [id])
   seats       BookingSeat[]
   payment     Payment?
-  ticket      Ticket?
+  tickets     Ticket[] // one per seat, created when the booking is paid
 
   @@index([userId])
 }
@@ -169,6 +169,7 @@ model BookingSeat {
   booking         Booking   @relation(fields: [bookingId], references: [id])
   showtime        Showtime  @relation(fields: [showtimeId], references: [id])
   seat            Seat      @relation(fields: [seatId], references: [id])
+  ticket          Ticket?
 
   @@unique([showtimeId, seatId])
 }
@@ -189,15 +190,20 @@ model Payment {
   @@index([status, expiresAt])
 }
 
+// One ticket (QR) per booked seat: each seat is scanned on its own at the door.
 model Ticket {
-  id          String       @id @default(uuid())
-  bookingId   String       @unique
-  ticketCode  String       @unique
-  qrPayload   String
-  status      TicketStatus @default(ACTIVE)
-  issuedAt    DateTime     @default(now())
-  usedAt      DateTime? // when the scanner admitted the ticket
-  scannedById String? // who admitted it (ADMIN or STAFF user)
-  booking     Booking      @relation(fields: [bookingId], references: [id])
-  scannedBy   User?        @relation("TicketScannedBy", fields: [scannedById], references: [id])
+  id            String       @id @default(uuid())
+  bookingId     String
+  bookingSeatId String       @unique
+  ticketCode    String       @unique
+  qrPayload     String
+  status        TicketStatus @default(ACTIVE)
+  issuedAt      DateTime     @default(now())
+  usedAt        DateTime? // when the scanner admitted the ticket
+  scannedById   String? // who admitted it (ADMIN or STAFF user)
+  booking       Booking      @relation(fields: [bookingId], references: [id])
+  bookingSeat   BookingSeat  @relation(fields: [bookingSeatId], references: [id])
+  scannedBy     User?        @relation("TicketScannedBy", fields: [scannedById], references: [id])
+
+  @@index([bookingId])
 }

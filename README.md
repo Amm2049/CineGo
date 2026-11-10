@@ -11,10 +11,10 @@ A full-stack cinema ticket booking web application built with **Next.js App Rout
 | 🤖 AI Movie Recommendations (Gemini) | Phase 6 |
 | 🎬 Movie Catalog & Showtime Browser | Phase 4 |
 | 💺 Interactive Seat Map + Dynamic Pricing | Phase 5 |
-| 🎟️ Digital QR Ticket Pass | Phase 7 |
+| 🎟️ Digital QR Ticket Pass (one QR per seat) | Phase 7 |
 | 🔐 Auth + Role-Based Access | Phase 3 |
 | 🗄️ PostgreSQL + Prisma ORM | Phase 2 |
-| 📷 Admin WebCam QR Scanner | Phase 8 |
+| 📷 Admin WebCam QR Scanner (one scan admits one seat) | Phase 8 |
 
 ---
 

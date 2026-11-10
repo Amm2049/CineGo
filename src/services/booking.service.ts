@@ -8,11 +8,11 @@ import { randomUUID } from "crypto";
 import { MOVIE_NOT_ON_SALE } from "@/lib/movie-sales";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { createTicketForBooking } from "@/services/ticket.service";
+import { createTicketsForBooking } from "@/services/ticket.service";
 import { invalidateUserRecommendations } from "@/services/recommendation.service";
 
 export type ConfirmPaymentResult =
-  | { success: true; bookingId: string; ticketId: string; amount: number }
+  | { success: true; bookingId: string; amount: number }
   | { success: false; error: string; status: number };
 
 /**
@@ -102,9 +102,9 @@ export async function confirmBookingPayment(params: {
           },
         });
 
-        const ticket = await createTicketForBooking(tx, booking.id);
+        await createTicketsForBooking(tx, booking.id); // one ticket (QR) per seat
 
-        return { success: true, bookingId: booking.id, ticketId: ticket.id, amount };
+        return { success: true, bookingId: booking.id, amount };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead }
     );

@@ -30,8 +30,8 @@ async function main() {
   console.log('🎬 Seeding CineGo database...\n');
 
   // ── Clean existing data (reverse FK order) ──────────────────
+  await prisma.ticket.deleteMany(); // tickets point at booking seats
   await prisma.bookingSeat.deleteMany();
-  await prisma.ticket.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.showtime.deleteMany();

@@ -15,7 +15,7 @@
 ## 1. Executive Summary
 The **Cinema Ticket Booking System (CineGo)** is a full-stack web application built with **Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, PostgreSQL, Prisma ORM, Auth.js, Google Gemini LLM API, and TMDB REST API**. 
 
-The platform enables customers to discover movies (ingested from TMDB via automated weekly Vercel Cron Job and Admin curation), view in-line AI match recommendations (`🔥 95% AI Match`), explore cinema screen formats on an Experiences FYI page, select seats on an interactive layout with dynamic row pricing, temporarily hold seats during checkout, pay by scanning a **PromptPay QR code (Stripe, test mode)** — or use the simulated payment fallback — and receive a digital ticket pass containing a scannable QR code. Movie availability status ("Now Showing" vs. "Upcoming") is computed dynamically from `releaseDate` and active showtime existence — never stored as a manual flag. Administrators can trigger a 1-Click bulk sync, import specific movies directly from TMDB, manage showtimes, and verify customer tickets using an integrated **Camera WebCam QR Scanner**.
+The platform enables customers to discover movies (ingested from TMDB via automated weekly Vercel Cron Job and Admin curation), view in-line AI match recommendations (`🔥 95% AI Match`), explore cinema screen formats on an Experiences FYI page, select seats on an interactive layout with dynamic row pricing, temporarily hold seats during checkout, pay by scanning a **PromptPay QR code (Stripe, test mode)** — or use the simulated payment fallback — and receive a digital ticket pass with **one scannable QR code per seat**. Movie availability status ("Now Showing" vs. "Upcoming") is computed dynamically from `releaseDate` and active showtime existence — never stored as a manual flag. Administrators can trigger a 1-Click bulk sync, import specific movies directly from TMDB, manage showtimes, and verify customer tickets using an integrated **Camera WebCam QR Scanner**.
 
 ---
 
@@ -98,8 +98,8 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 2a. **Movie & Showtime Picker (`/movies/[id]`):** *(added in Phase 10)* Movie details plus a date strip (Today, Tomorrow, …) and the day's times grouped by theatre/format, with seats left (sold + held) and sold-out times disabled; each time opens `/checkout/[showtimeId]`. Movie cards and the hero link here; the seat map links back via "Change showtime". Hidden (inactive) movies show Not Found.
 3. **Experiences FYI Page (`/experiences`):** Informational page highlighting cinema screen formats (IMAX Laser, Dolby Cinema, 4DX Motion, VIP Lounge).
 4. **Seat Selection & Checkout (`/checkout/[showtimeId]`):** Interactive seat map, dynamic row pricing, 5-minute seat hold timer (`heldUntil`), SWR polling, and payment: a Stripe PromptPay QR with a 10-minute payment countdown and automatic redirect to the ticket once paid (or the simulated payment when `PAYMENT_PROVIDER` is not `stripe`).
-5. **Digital Ticket Pass (`/tickets/[id]`):** Rendered scannable QR code pass (`qrcode.react`), seat details, screen number, and booking reference.
-6. **My Tickets & History (`/tickets`):** View active upcoming passes and past booking history.
+5. **Digital Ticket Pass (`/tickets/[bookingId]`):** One pass per booking holding **one ticket per seat**, each with its own scannable QR code (`qrcode.react`) and manual entry code, plus screen number, showtime and booking reference. Each person in a group shows their own seat's QR.
+6. **My Tickets & History (`/tickets`):** One row per booking (with how many of its seats are used), upcoming and past.
 7. **Profile & Genre Preferences (`/profile`):** Manage account details & select/update favorite genres for AI recommendations.
 
 ### 🔐 4.2 Authentication Pages (2 Pages)
@@ -110,7 +110,7 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 10. **Admin Dashboard (`/admin`):** Operational overview metrics (total movies, showtimes, revenue).
 11. **Manage Movies (`/admin/movies`):** Features a 1-Click **"⚡ Sync Latest Releases"** button to trigger instant catalog synchronization with TMDB, alongside search-by-title import (`POST /api/admin/movies/sync`) — admin selects a result and clicks Import to upsert movie data (title, description, runtime, release date, poster, backdrop, genres). Existing imported movies can be edited or deactivated.
 12. **Manage Showtimes (`/admin/showtimes`):** Create showtime schedules per screen with overlap validation.
-13. **WebCam QR Ticket Scanner (`/admin/scanner`):** Live camera WebCam QR scanner (`html5-qrcode`) + manual ticket code input fallback to verify entry (`VALID`, `INVALID`, `ALREADY USED`).
+13. **WebCam QR Ticket Scanner (`/admin/scanner`):** Live camera WebCam QR scanner (`html5-qrcode`) + manual ticket code input fallback to verify entry (`VALID`, `INVALID`, `ALREADY USED`). **One scan admits one seat**; the result shows the seat and how many of the booking's seats are already in.
 
 ---
 
@@ -122,8 +122,8 @@ The repository uses a disciplined 4-tier branching model tailored for milestone 
 * **FR-04 (Experiences FYI):** Informational page (`/experiences`) explaining screen technologies (IMAX, Dolby, 4DX, VIP).
 * **FR-05 (Seat Selection & Dynamic Pricing):** Interactive seat map calculates price totals based on row pricing rules.
 * **FR-06 (Concurrency & Holds):** Seats held for 5 minutes via `heldUntil` (set to `NOW + 5min` on seat selection, cleared on expiry or payment). Starting a PromptPay payment extends the hold **once** to the 10-minute payment window plus a 2-minute grace period (see FR-10); seats are locked while the payment is open. Database transaction guarantees atomic confirmation. `@@unique([showtimeId, seatId])` prevents double-booking.
-* **FR-07 (Digital Ticket & QR):** Paid bookings generate digital tickets with rendered QR code passes.
-* **FR-08 (Admin Scanner & CRUD):** Admin WebCam QR Scanner reads QR tokens or manual ticket codes and displays ticket validation results. Admin manages Showtimes via form-based CRUD.
+* **FR-07 (Digital Ticket & QR):** A paid booking generates **one digital ticket per seat**, each with its own unique code and rendered QR code.
+* **FR-08 (Admin Scanner & CRUD):** Admin WebCam QR Scanner reads QR tokens or manual ticket codes and displays ticket validation results. Each scan admits exactly one seat; a seat can be admitted only once. Admin manages Showtimes via form-based CRUD.
 * **FR-09 (TMDB Movie Ingestion & Automated Cron Sync):** Hybrid ingestion model. (1) **Automated Vercel Cron Job:** Runs weekly via `GET /api/cron/sync-movies` (secured with `CRON_SECRET` authorization header) to keep the catalog fresh with up to 20 Now Showing and 40 Upcoming English-language releases (Phase 10). (2) **Admin On-Demand Curation:** Admin can trigger an immediate 1-click catalog sync or search and import specific TMDB titles via `POST /api/admin/movies/sync`. The system fetches movie metadata (title, overview, runtime, release date, poster, backdrop, genres) and idempotently upserts `Movie` records using `tmdbId` as the unique key to prevent duplicates. Availability status remains derived dynamically from `releaseDate` and future showtimes. In development, `prisma/seed.ts` syncs live TMDB data with 10 Now Playing + 20 Upcoming movies and schedules a 14-day conflict-free rolling showtime window.
 * **FR-10 (Stripe PromptPay Payment):** With `PAYMENT_PROVIDER=stripe`, "Pay" re-prices the held seats server-side and creates a Stripe PaymentIntent (THB, PromptPay, test-mode keys only). The customer has **10 minutes** to scan the QR; seats stay held for **10 + 2 minutes** (grace for late webhooks). When the window ends the server cancels the PaymentIntent so the QR can no longer be paid (triggered by the customer's countdown, the status poll, or another customer trying to hold those seats — no cron). Only a `payment_intent.succeeded` event (webhook, or the status poll as a fallback) can mark a booking `PAID`: it is confirmed if the booking still owns every seat it paid for, otherwise the payment is **refunded automatically**. Duplicate webhooks are ignored (idempotent settle, `transactionReference` = PaymentIntent id). The simulated payment remains available as a fallback.
 
@@ -246,7 +246,7 @@ model Booking {
   showtime    Showtime      @relation(fields: [showtimeId], references: [id])
   seats       BookingSeat[]
   payment     Payment?
-  ticket      Ticket?
+  tickets     Ticket[] // one per seat
 
   @@index([userId])
 }
@@ -268,6 +268,7 @@ model BookingSeat {
   booking         Booking  @relation(fields: [bookingId], references: [id])
   showtime        Showtime @relation(fields: [showtimeId], references: [id])
   seat            Seat     @relation(fields: [seatId], references: [id])
+  ticket          Ticket?
 
   @@unique([showtimeId, seatId])
 }
@@ -301,14 +302,17 @@ enum PaymentProvider {
   STRIPE
 }
 
+// One ticket (QR) per booked seat
 model Ticket {
-  id         String       @id @default(uuid())
-  bookingId  String       @unique
-  ticketCode String       @unique
-  qrPayload  String
-  status     TicketStatus @default(ACTIVE)
-  issuedAt   DateTime     @default(now())
-  booking    Booking      @relation(fields: [bookingId], references: [id])
+  id            String       @id @default(uuid())
+  bookingId     String
+  bookingSeatId String       @unique
+  ticketCode    String       @unique
+  qrPayload     String
+  status        TicketStatus @default(ACTIVE)
+  issuedAt      DateTime     @default(now())
+  booking       Booking      @relation(fields: [bookingId], references: [id])
+  bookingSeat   BookingSeat  @relation(fields: [bookingSeatId], references: [id])
 }
 
 enum TicketStatus {
@@ -328,6 +332,6 @@ enum TicketStatus {
 5. **Derived Movie Status:** "Now Showing" and "Upcoming" sections on homepage and catalog page driven by live Prisma queries — no stored status flags.
 6. **AI Recommendation Badges:** Gemini LLM API integration rendering in-line AI match badges (1-sentence insights generated but not displayed on cards).
 7. **Seat Concurrency Protection:** PostgreSQL `heldUntil` seat hold (5-minute TTL) + transaction and unique constraint protection against double-booking.
-8. **Digital QR Ticket & WebCam Scanner:** Working digital ticket with rendered QR code and an Admin Camera WebCam ticket scanner.
+8. **Digital QR Ticket & WebCam Scanner:** Working digital tickets (one QR per seat) and an Admin Camera WebCam ticket scanner that admits one seat per scan.
 9. **Testing Suite:** Automated unit/integration tests with Vitest and E2E concurrency tests with Playwright.
 10. **Stripe PromptPay Payment (test mode):** PromptPay QR checkout with a 10-minute payment window, signature-verified Stripe webhook, automatic refund when seats were lost, and the simulated payment kept as a fallback.

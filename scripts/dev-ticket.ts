@@ -97,12 +97,21 @@ async function main() {
     const paid = await confirmBookingPayment({ userId: user.id, showtimeId: showtime.id });
     if (!paid.success) fail(`Could not pay: ${paid.error}`);
 
-    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: paid.ticketId } });
+    // One ticket (QR) per seat
+    const tickets = await prisma.ticket.findMany({
+      where: { bookingId: paid.bookingId },
+      include: { bookingSeat: { include: { seat: true } } },
+    });
+    const codes = tickets
+      .map((t) => ({ label: `${t.bookingSeat.seat.rowLabel}${t.bookingSeat.seat.seatNum}`, code: t.ticketCode }))
+      .sort((a, b) => a.label.localeCompare(b.label, "en", { numeric: true }))
+      .map((t) => `             ${t.label.padEnd(4)} ${t.code}`)
+      .join("\n");
     const entryOpens = new Date(showtime.startsAt.getTime() - ENTRY_OPENS_MINUTES_BEFORE * MINUTE_MS);
     const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
     console.log(`
-🎟️  Paid ticket created for ${email}
+🎟️  Paid booking created for ${email} (${tickets.length} ${tickets.length === 1 ? "ticket" : "tickets"}, one per seat)
 
    Movie     ${showtime.movie.title}
    Theatre   ${showtime.screen.name} · ${showtime.screen.format}
@@ -110,8 +119,9 @@ async function main() {
    Seats     ${chosen.map((s) => `${s.rowLabel}${s.seatNum}`).join(", ")}
    Paid      ฿${paid.amount} (simulated payment)
 
-   Ticket    ${baseUrl}/tickets/${ticket.id}   ← open as ${email}, then scan its QR
-   Code      ${ticket.ticketCode}   ← or type this in the scanner's manual entry
+   Tickets   ${baseUrl}/tickets/${paid.bookingId}   ← open as ${email}, then scan each seat's QR
+   Codes     (or type one into the scanner's manual entry)
+${codes}
 `);
     return;
   }

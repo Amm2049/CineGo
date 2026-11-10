@@ -1,7 +1,7 @@
 // src/app/api/payments/route.ts
 // Start payment for the user's held seats.
 // PAYMENT_PROVIDER=stripe → creates a PromptPay PaymentIntent and returns its QR (Phase 9).
-// Otherwise           → simulated payment: confirms at once and issues the digital ticket (Phase 7).
+// Otherwise           → simulated payment: confirms at once and issues the digital tickets, one per seat (Phase 7).
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireCustomer } from "@/lib/admin-guard";
@@ -50,7 +50,6 @@ export async function POST(request: NextRequest) {
       provider: "simulated",
       success: true,
       bookingId: result.bookingId,
-      ticketId: result.ticketId,
       amount: result.amount,
     };
     return NextResponse.json(response);

@@ -17,13 +17,13 @@ const OUTCOMES: Record<Outcome, { tone: Tone; title: string; label: string; next
     tone: "good",
     title: "Admit",
     label: "Admitted",
-    next: "Let them in. One ticket covers every seat listed.",
+    next: "Let this one person in. Each seat has its own QR: scan every person in the group.",
   },
   ALREADY_USED: {
     tone: "bad",
     title: "Already used",
     label: "Already used",
-    next: "Don't admit. Send them to the box office if they think this is a mistake.",
+    next: "Don't admit. This seat is already in; check they scanned their own seat's QR, or send them to the box office.",
   },
   NOT_FOUND: {
     tone: "bad",
@@ -136,9 +136,7 @@ export default function ScannerClient() {
           id: ++historyId.current,
           at: new Date().toISOString(),
           outcome: next.outcome,
-          detail: t
-            ? `${next.outcome === "ADMITTED" ? `${t.seats.length} ${t.seats.length === 1 ? "seat" : "seats"} · ` : ""}${t.bookingReference}`
-            : "",
+          detail: t ? `${"seat" in next && next.seat ? `${next.seat} · ` : ""}${t.bookingReference}` : "",
         },
         ...h,
       ].slice(0, 8)
@@ -165,6 +163,9 @@ export default function ScannerClient() {
   }
 
   const ticket = result && "ticket" in result ? result.ticket : undefined;
+  const seat = result && "seat" in result ? result.seat : undefined;
+  const usedInBooking = ticket ? ticket.seats.filter((s) => s.status === "USED").length : 0;
+  const otherSeats = ticket ? ticket.seats.filter((s) => s.label !== seat) : [];
   const info = result ? OUTCOMES[result.outcome] : null;
   const admitted = result?.outcome === "ADMITTED";
 
@@ -184,7 +185,7 @@ export default function ScannerClient() {
         </div>
 
         {/* The result covers the camera (paused meanwhile), so it is in view without scrolling on a phone */}
-        <div className={`relative ${busy || result ? "min-h-[22rem]" : ""}`}>
+        <div className={`relative ${busy || result ? "min-h-[27rem]" : ""}`}>
           <QrScanner onScan={handleScan} paused={busy || result !== null} />
 
           {busy && (
@@ -200,12 +201,8 @@ export default function ScannerClient() {
             >
               {admitted && ticket ? (
                 <>
-                  <p className="text-4xl font-black tracking-tight sm:text-5xl">
-                    ✓ ADMIT {ticket.seats.length}
-                  </p>
-                  <p className="mt-1 font-mono text-2xl font-bold sm:text-3xl">
-                    {ticket.seats.map((s) => s.label).join(", ")}
-                  </p>
+                  <p className="text-4xl font-black tracking-tight sm:text-5xl">✓ ADMIT 1</p>
+                  <p className="mt-1 font-mono text-2xl font-bold sm:text-3xl">Seat {seat}</p>
                 </>
               ) : (
                 <>
@@ -231,12 +228,22 @@ export default function ScannerClient() {
                   </dd>
                   <dt className="opacity-70">Starts</dt>
                   <dd>{formatCinemaTime(ticket.showtime.startsAt)}</dd>
-                  {!admitted && (
+                  {!admitted && seat && (
                     <>
-                      <dt className="opacity-70">Seats</dt>
-                      <dd>{ticket.seats.map((s) => s.label).join(", ")}</dd>
+                      <dt className="opacity-70">Seat</dt>
+                      <dd className="font-mono font-semibold">{seat}</dd>
                     </>
                   )}
+                  <dt className="opacity-70">Booking</dt>
+                  <dd>
+                    {usedInBooking} of {ticket.seats.length} admitted
+                    {otherSeats.length > 0 && (
+                      <span className="opacity-80">
+                        {" "}· other seats:{" "}
+                        {otherSeats.map((s) => `${s.label}${s.status === "USED" ? " ✓" : ""}`).join(", ")}
+                      </span>
+                    )}
+                  </dd>
                   <dt className="opacity-70">Reference</dt>
                   <dd className="font-mono">{ticket.bookingReference}</dd>
                 </dl>

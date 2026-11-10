@@ -23,7 +23,7 @@ import {
   toSatang,
 } from "@/lib/payment-config";
 import {
-  createTicketForBooking,
+  createTicketsForBooking,
   getBookingReference,
 } from "@/services/ticket.service";
 import { invalidateUserRecommendations } from "@/services/recommendation.service";
@@ -363,7 +363,7 @@ export async function getOpenPromptPayCheckout(
 
 type SettleOutcome = {
   status: PaymentStatusName;
-  ticketId: string | null;
+  bookingId: string | null; // set once paid: the tickets are at /tickets/<bookingId>
   message: string | null;
 };
 
@@ -379,7 +379,7 @@ export async function settleSucceededPayment(
 
   type Decided =
     | { kind: "done"; outcome: SettleOutcome }
-    | { kind: "paid"; ticketId: string; userId: string }
+    | { kind: "paid"; bookingId: string; userId: string }
     | { kind: "refund"; reason: string };
 
   let decided: Decided;
@@ -393,7 +393,7 @@ export async function settleSucceededPayment(
               include: {
                 seats: true,
                 showtime: { select: { startsAt: true } },
-                ticket: true,
+                _count: { select: { tickets: true } },
               },
             },
           },
@@ -405,7 +405,7 @@ export async function settleSucceededPayment(
             kind: "done",
             outcome: {
               status: "SUCCESS",
-              ticketId: payment.booking.ticket?.id ?? null,
+              bookingId: payment.booking._count.tickets > 0 ? payment.booking.id : null,
               message: null,
             },
           };
@@ -415,7 +415,7 @@ export async function settleSucceededPayment(
             kind: "done",
             outcome: {
               status: "REFUNDED",
-              ticketId: null,
+              bookingId: null,
               message: STATUS_MESSAGES.REFUNDED!,
             },
           };
@@ -459,8 +459,8 @@ export async function settleSucceededPayment(
             transactionReference: intent.id,
           },
         });
-        const ticket = await createTicketForBooking(tx, booking.id);
-        return { kind: "paid", ticketId: ticket.id, userId: booking.userId };
+        await createTicketsForBooking(tx, booking.id); // one ticket (QR) per seat
+        return { kind: "paid", bookingId: booking.id, userId: booking.userId };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -477,7 +477,7 @@ export async function settleSucceededPayment(
 
   if (decided.kind === "paid") {
     await invalidateUserRecommendations(decided.userId);
-    return { status: "SUCCESS", ticketId: decided.ticketId, message: null };
+    return { status: "SUCCESS", bookingId: decided.bookingId, message: null };
   }
 
   // Refund: idempotency key makes retries safe; mark REFUNDED only after Stripe accepts it
@@ -502,7 +502,7 @@ export async function settleSucceededPayment(
   );
   return {
     status: "REFUNDED",
-    ticketId: null,
+    bookingId: null,
     message: `${STATUS_MESSAGES.REFUNDED} ${decided.reason}`,
   };
 }
@@ -607,13 +607,13 @@ async function getPaymentSnapshot(
 ): Promise<SettleOutcome | null> {
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
-    include: { booking: { select: { ticket: { select: { id: true } } } } },
+    include: { booking: { select: { id: true, _count: { select: { tickets: true } } } } },
   });
   if (!payment) return null;
   const status = payment.status as PaymentStatusName;
   return {
     status,
-    ticketId: payment.booking.ticket?.id ?? null,
+    bookingId: payment.booking._count.tickets > 0 ? payment.booking.id : null,
     message: STATUS_MESSAGES[status] ?? null,
   };
 }

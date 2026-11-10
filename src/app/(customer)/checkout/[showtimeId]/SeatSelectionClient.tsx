@@ -173,7 +173,7 @@ export default function SeatSelectionClient({
       }
 
       // Keep the button disabled while navigating to the ticket pass
-      router.push(`/tickets/${started.ticketId}?paid=1`);
+      router.push(`/tickets/${started.bookingId}?paid=1`);
     } catch {
       setErrorMsg("Network error processing payment");
       setIsPaying(false);
@@ -346,7 +346,7 @@ export default function SeatSelectionClient({
           {checkout ? (
             <PromptPayPanel
               checkout={checkout}
-              onPaid={(ticketId) => router.push(`/tickets/${ticketId}?paid=1`)}
+              onPaid={(bookingId) => router.push(`/tickets/${bookingId}?paid=1`)}
               onClosed={handlePaymentClosed}
             />
           ) : (

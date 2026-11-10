@@ -1,6 +1,7 @@
 // src/tests/unit/ticket.service.test.ts
 import { describe, it, expect } from "vitest";
 import {
+  bookingProgress,
   buildQrPayload,
   getBookingReference,
   isValidTicketCode,
@@ -36,5 +37,20 @@ describe("isValidTicketCode", () => {
     expect(isValidTicketCode("https://example.com/menu")).toBe(false);
     expect(isValidTicketCode("CINEGO:not-a-uuid")).toBe(false);
     expect(isValidTicketCode("")).toBe(false);
+  });
+});
+
+describe("bookingProgress (one ticket per seat)", () => {
+  const seat = (label: string, status: "ACTIVE" | "USED") => ({
+    id: label, ticketCode: label, qrPayload: label, status, usedAt: null, label, tier: "STANDARD" as const, price: 150,
+  });
+  const pass = (seats: ReturnType<typeof seat>[]) =>
+    ({ seats } as unknown as Parameters<typeof bookingProgress>[0]);
+
+  it("counts how many of the booking's seats are in", () => {
+    expect(bookingProgress(pass([seat("F5", "USED"), seat("F6", "ACTIVE"), seat("F7", "ACTIVE")]))).toEqual({ used: 1, total: 3 });
+  });
+  it("is 0 of N before anyone is scanned", () => {
+    expect(bookingProgress(pass([seat("A1", "ACTIVE"), seat("A2", "ACTIVE")]))).toEqual({ used: 0, total: 2 });
   });
 });

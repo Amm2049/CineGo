@@ -55,7 +55,7 @@ export default function AdminMovieTable({ movies, busy, onChanged, onError }: Pr
     if (movie.upcomingTicketsSold === 0) return true; // nothing sold: deactivate right away
     const tickets = `${movie.upcomingTicketsSold} ${movie.upcomingTicketsSold === 1 ? "ticket" : "tickets"}`;
     return confirm(
-      `“${movie.title}” has ${tickets} (${movie.upcomingSeatsSold} seats) sold for upcoming shows.\n\n` +
+      `“${movie.title}” has ${tickets} (${movie.upcomingBookings} ${movie.upcomingBookings === 1 ? "booking" : "bookings"}) sold for upcoming shows.\n\n` +
         "Deactivating hides the movie and stops new sales. Tickets already sold stay valid and can still be scanned. " +
         "Shows are not cancelled and nobody is refunded.\n\nDeactivate it?"
     );
