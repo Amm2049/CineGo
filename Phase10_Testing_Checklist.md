@@ -78,7 +78,7 @@ Notes:
 
 * [ ] Select 2 seats → **Pay with PromptPay** → QR code, amount = seat total, and a **10-minute countdown**.
 * [ ] Reload the page → the same QR and countdown come back (not a new payment, and the countdown doesn't restart).
-* [ ] Open the test-mode link → Stripe's hosted page → **Authorize** → within ~3 seconds you are sent to the ticket.
+* [ ] Open the test-mode link → Stripe's test page → **Simulate scan** (opens a new tab) → **Authorize Test Payment** → back in the CineGo tab, within ~3 seconds you are sent to the ticket.
 * [ ] Terminal 2 shows `payment_intent.succeeded` forwarded with a 200 response.
 * [ ] Ticket page: movie, showtime (Thai time), theatre, seats, total and a **QR code**.
 * [ ] `/tickets` lists it under **Upcoming**.
@@ -91,7 +91,7 @@ Notes:
 ## 6. PromptPay — cancel, fail, countdown
 
 * [ ] Start a payment, press **Cancel payment** → seats released with a clear message; B can take them.
-* [ ] Start a payment, on Stripe's page choose **Fail** → clear message, seats released, no ticket.
+* [ ] Start a payment, on Stripe's test page → **Simulate scan** (new tab) → **Expire Test Payment** → clear message, seats released, no ticket.
 * [ ] Start a payment and let the **10-minute countdown reach 0** → clear message, QR gone; the seats become free for B. *(Automated in step 2; this checks what the customer actually sees.)*
 * [ ] While a payment is open, try to change seats → it is refused with "payment in progress".
 
