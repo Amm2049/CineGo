@@ -72,8 +72,9 @@ export default async function MoviePage({
 
   return (
     <main className="w-full min-w-0 flex-1 bg-[#03030d] text-white">
-      {/* Hero: backdrop + poster + title */}
-      <section className="relative overflow-hidden border-b border-white/10">
+      {/* Hero: backdrop + poster + title. Tall enough (scales with screen width) to show most of the
+          16:9 backdrop; the poster and title sit at the bottom of it. */}
+      <section className="relative flex min-h-[max(360px,min(34vw,70svh))] flex-col overflow-hidden border-b border-white/10">
         <Image
           src={movie.backdropUrl || movie.posterUrl}
           alt=""
@@ -81,18 +82,18 @@ export default async function MoviePage({
           sizes="100vw"
           loading="eager"
           fetchPriority="high"
-          className="object-cover object-center opacity-35"
+          className="object-cover object-[center_25%] opacity-50"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#03030d] via-[#03030d]/70 to-[#03030d]/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#03030d] via-[#03030d]/55 to-[#03030d]/20" />
 
-        <div className="relative mx-auto max-w-6xl px-4 pb-8 pt-8 sm:px-6 lg:px-8">
+        <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-8 pt-8 sm:px-6 lg:px-8">
           <Link
             href="/movies"
-            className="text-sm font-semibold text-[#c7d2fe] hover:text-white"
+            className="self-start text-sm font-semibold text-[#c7d2fe] hover:text-white"
           >
             ← All movies
           </Link>
-          <div className="mt-6 flex items-end gap-4 sm:gap-6">
+          <div className="mt-auto flex items-end gap-4 pt-6 sm:gap-6">
             <div className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-2xl border border-white/15 shadow-2xl sm:w-40">
               <Image
                 src={movie.posterUrl}

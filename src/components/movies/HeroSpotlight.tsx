@@ -36,8 +36,10 @@ export default function HeroSpotlight({ movies }: HeroSpotlightProps) {
   if (!movies || movies.length === 0) return null;
   const current = movies[activeIndex] || movies[0];
 
+  // Height follows the screen width so most of the 16:9 backdrop shows, but never more than one screen.
+  // The image is anchored near the top: the subject is usually in the upper half, so crop the bottom first.
   return (
-    <section className="relative w-full min-h-[520px] lg:min-h-[640px] flex items-center overflow-hidden border-b border-[#2500f0]/30">
+    <section className="relative w-full min-h-[520px] lg:min-h-[max(640px,min(45vw,calc(100svh-4.5rem)))] flex items-center overflow-hidden border-b border-[#2500f0]/30">
       {/* Background Backdrops with crossfade */}
       {movies.map((m, idx) => (
         <div
@@ -53,7 +55,7 @@ export default function HeroSpotlight({ movies }: HeroSpotlightProps) {
             sizes="100vw"
             loading={idx === 0 ? "eager" : "lazy"}
             fetchPriority={idx === 0 ? "high" : "auto"}
-            className="object-cover object-center scale-105"
+            className="object-cover object-[center_25%]"
           />
           {/* Dynamic multi-stop lighting vignette */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#03030d] via-[#03030d]/65 via-35% to-transparent/10" />
