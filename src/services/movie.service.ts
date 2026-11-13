@@ -76,6 +76,7 @@ export async function getMovieWithShowtimes(movieId: string, now: Date = new Dat
       description: movie.description,
       posterUrl: movie.posterUrl,
       backdropUrl: movie.backdropUrl,
+      trailerKey: movie.trailerKey,
       duration: movie.duration,
       releaseDate: movie.releaseDate.toISOString(),
       genres: movie.genres.map((g) => g.genre.name),

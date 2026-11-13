@@ -33,6 +33,14 @@ export interface TmdbReleaseDates {
   }[];
 }
 
+export interface TmdbVideo {
+  key: string; // the video id on `site`, e.g. a YouTube id
+  site: string; // "YouTube", "Vimeo", ...
+  type: string; // "Trailer", "Teaser", "Clip", "Featurette", ...
+  official: boolean;
+  published_at: string; // ISO date
+}
+
 export interface TmdbMovieDetails {
   id: number;
   title: string;
@@ -48,6 +56,7 @@ export interface TmdbMovieDetails {
   original_language?: string; // ISO 639-1, e.g. "en", "th"
   popularity?: number;
   release_dates?: TmdbReleaseDates; // present when append_to_response=release_dates
+  videos?: { results: TmdbVideo[] }; // present when append_to_response=videos
 }
 
 export interface TmdbPaginatedResponse<T> {
@@ -135,7 +144,7 @@ export async function searchMovies(
 export async function getMovieDetails(tmdbId: number): Promise<TmdbMovieDetails> {
   return tmdbFetch<TmdbMovieDetails>(`/movie/${tmdbId}`, {
     language: "en-US",
-    append_to_response: "release_dates", // Thai release dates in the same request
+    append_to_response: "release_dates,videos", // Thai release dates + trailers in the same request
   });
 }
 

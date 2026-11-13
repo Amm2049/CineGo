@@ -14,7 +14,9 @@ import {
   TMDB_REGION,
   type TmdbMovieDetails,
   type TmdbMovieSummary,
+  type TmdbVideo,
 } from "@/lib/tmdb";
+import { isYouTubeEmbeddable } from "@/lib/youtube";
 
 export const NOW_SHOWING_TARGET = 20;
 export const UPCOMING_TARGET = 40;
@@ -61,6 +63,8 @@ export interface MovieSyncInput {
   posterUrl: string;
   backdropUrl: string;
   popularity: number;
+  /** YouTube video id of the trailer, or null when TMDB has none. */
+  trailerKey: string | null;
   genres: string[];
 }
 
@@ -93,6 +97,46 @@ export function pickRegionalReleaseDate(
   return dates[0] ?? null;
 }
 
+const YOUTUBE_ID = /^[A-Za-z0-9_-]{6,20}$/; // the id goes into an embed URL, so accept only id characters
+
+/**
+ * The YouTube trailer to show on the movie page, or null if TMDB has none.
+ * Prefers a Trailer over a Teaser, then an official video, then the newest one.
+ */
+export function pickTrailerKey(details: TmdbMovieDetails): string | null {
+  return rankTrailers(details)[0]?.key ?? null;
+}
+
+/** YouTube trailers and teasers, best first. */
+function rankTrailers(details: TmdbMovieDetails): TmdbVideo[] {
+  const rank = (type: string) => (type === "Trailer" ? 0 : 1);
+  return (details.videos?.results ?? [])
+    .filter((v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser") && YOUTUBE_ID.test(v.key))
+    .sort(
+      (a, b) =>
+        rank(a.type) - rank(b.type) ||
+        Number(b.official) - Number(a.official) ||
+        (b.published_at ?? "").localeCompare(a.published_at ?? "")
+    );
+}
+
+const MAX_TRAILER_CHECKS = 4; // YouTube lookups per movie at most
+
+/**
+ * Some trailer owners block playback on other websites. Keep only the best trailer that can play
+ * inside our page (checked best-first), so pickTrailerKey() never returns a blocked one.
+ * Returns a copy of `details`; a movie whose trailers are all blocked ends up with none.
+ */
+export async function withPlayableTrailer(
+  details: TmdbMovieDetails,
+  isEmbeddable: (key: string) => Promise<boolean> = isYouTubeEmbeddable
+): Promise<TmdbMovieDetails> {
+  for (const video of rankTrailers(details).slice(0, MAX_TRAILER_CHECKS)) {
+    if (await isEmbeddable(video.key)) return { ...details, videos: { results: [video] } };
+  }
+  return { ...details, videos: { results: [] } };
+}
+
 /** Convert a TMDB details response into CineGo's Movie shape. No DB, no network. */
 export function mapTmdbToMovieInput(
   details: TmdbMovieDetails,
@@ -111,6 +155,7 @@ export function mapTmdbToMovieInput(
     posterUrl: getTmdbImageUrl(details.poster_path, "w500"),
     backdropUrl: getTmdbImageUrl(details.backdrop_path, "original"),
     popularity: details.popularity ?? 0,
+    trailerKey: pickTrailerKey(details),
     genres: Array.from(new Set(details.genres.map((g) => normalizeGenreName(g.name)))),
   };
 }
@@ -154,6 +199,7 @@ export async function upsertMovie(
         posterUrl: data.posterUrl,
         backdropUrl: data.backdropUrl,
         popularity: data.popularity, // TMDB-owned, changes daily
+        trailerKey: data.trailerKey, // TMDB-owned; null when no trailer can play on our page
       },
       select: { id: true },
     });
@@ -177,7 +223,7 @@ export async function upsertMovie(
 export type UpsertOutcome = "created" | "updated";
 
 export async function syncMovieByTmdbId(tmdbId: number) {
-  const details = await getMovieDetails(tmdbId);
+  const details = await withPlayableTrailer(await getMovieDetails(tmdbId));
   const input = mapTmdbToMovieInput(details);
 
   const [existing, genreIds] = await Promise.all([
@@ -252,7 +298,9 @@ export async function syncLatestReleases(): Promise<SyncSummary> {
   };
 
   // Stage 1 — network only: fetch details, 5 at a time (no transaction open yet)
-  const fetched = await settleInBatches(ids, DETAIL_BATCH_SIZE, (id) => getMovieDetails(id));
+  const fetched = await settleInBatches(ids, DETAIL_BATCH_SIZE, (id) =>
+    getMovieDetails(id).then((d) => withPlayableTrailer(d))
+  );
   const inputs: MovieSyncInput[] = [];
   fetched.forEach((result, i) => {
     if (result.status === "fulfilled") {

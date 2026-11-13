@@ -5,8 +5,10 @@ import {
   MAX_SYNC_PAGES,
   mapTmdbToMovieInput,
   normalizeGenreName,
+  pickTrailerKey,
+  withPlayableTrailer,
 } from "@/services/movie-sync.service";
-import type { TmdbMovieDetails, TmdbMovieSummary } from "@/lib/tmdb";
+import type { TmdbMovieDetails, TmdbMovieSummary, TmdbVideo } from "@/lib/tmdb";
 
 const NOW = new Date("2026-11-04T12:00:00Z");
 
@@ -127,5 +129,120 @@ describe("collectEnglishTitles (bulk sync: English-language films only)", () => 
     const upcoming = list([[movie(2, "en"), movie(3, "en")]]);
     expect(await collectEnglishTitles(nowPlaying.fetchPage, 10, seen)).toEqual([1, 2]);
     expect(await collectEnglishTitles(upcoming.fetchPage, 10, seen)).toEqual([3]);
+  });
+});
+
+const video = (overrides: Partial<TmdbVideo> = {}): TmdbVideo => ({
+  key: "abc123XYZ_-",
+  site: "YouTube",
+  type: "Trailer",
+  official: true,
+  published_at: "2026-09-01T00:00:00.000Z",
+  ...overrides,
+});
+
+describe("pickTrailerKey", () => {
+  it("returns null when TMDB has no videos", () => {
+    expect(pickTrailerKey(details())).toBeNull();
+    expect(pickTrailerKey(details({ videos: { results: [] } }))).toBeNull();
+  });
+
+  it("prefers a trailer over a teaser, even a newer one", () => {
+    const key = pickTrailerKey(
+      details({
+        videos: {
+          results: [
+            video({ key: "teaser00001", type: "Teaser", published_at: "2026-10-01T00:00:00.000Z" }),
+            video({ key: "trailer0001", type: "Trailer" }),
+          ],
+        },
+      })
+    );
+    expect(key).toBe("trailer0001");
+  });
+
+  it("prefers the official trailer, then the newest", () => {
+    const key = pickTrailerKey(
+      details({
+        videos: {
+          results: [
+            video({ key: "fanmade0001", official: false, published_at: "2026-10-20T00:00:00.000Z" }),
+            video({ key: "official001", published_at: "2026-08-01T00:00:00.000Z" }),
+            video({ key: "official002", published_at: "2026-09-15T00:00:00.000Z" }),
+          ],
+        },
+      })
+    );
+    expect(key).toBe("official002");
+  });
+
+  it("falls back to a teaser when there is no trailer", () => {
+    expect(pickTrailerKey(details({ videos: { results: [video({ key: "teaser00001", type: "Teaser" })] } }))).toBe(
+      "teaser00001"
+    );
+  });
+
+  it("ignores clips, non-YouTube videos and ids that are not plain YouTube ids", () => {
+    const key = pickTrailerKey(
+      details({
+        videos: {
+          results: [
+            video({ key: "clip0000001", type: "Clip" }),
+            video({ key: "vimeo000001", site: "Vimeo" }),
+            video({ key: 'x"><script>' }),
+          ],
+        },
+      })
+    );
+    expect(key).toBeNull();
+  });
+
+  it("is included in the mapped movie", () => {
+    expect(mapTmdbToMovieInput(details({ videos: { results: [video()] } }), NOW).trailerKey).toBe("abc123XYZ_-");
+    expect(mapTmdbToMovieInput(details(), NOW).trailerKey).toBeNull();
+  });
+});
+
+describe("withPlayableTrailer", () => {
+  const two = details({
+    videos: {
+      results: [
+        video({ key: "blocked0001", published_at: "2026-10-01T00:00:00.000Z" }),
+        video({ key: "playable001", published_at: "2026-09-01T00:00:00.000Z" }),
+      ],
+    },
+  });
+
+  it("skips a trailer the owner has blocked on other websites and takes the next one", async () => {
+    const checked: string[] = [];
+    const result = await withPlayableTrailer(two, async (key) => {
+      checked.push(key);
+      return key !== "blocked0001";
+    });
+    expect(pickTrailerKey(result)).toBe("playable001");
+    expect(checked).toEqual(["blocked0001", "playable001"]); // best first
+  });
+
+  it("stops at the first playable trailer", async () => {
+    const checked: string[] = [];
+    await withPlayableTrailer(two, async (key) => {
+      checked.push(key);
+      return true;
+    });
+    expect(checked).toEqual(["blocked0001"]);
+  });
+
+  it("leaves the movie without a trailer when every one is blocked", async () => {
+    expect(pickTrailerKey(await withPlayableTrailer(two, async () => false))).toBeNull();
+  });
+
+  it("makes no lookups for a movie without videos", async () => {
+    let calls = 0;
+    const result = await withPlayableTrailer(details(), async () => {
+      calls++;
+      return true;
+    });
+    expect(calls).toBe(0);
+    expect(pickTrailerKey(result)).toBeNull();
   });
 });

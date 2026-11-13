@@ -85,6 +85,7 @@ model Movie {
   backdropUrl String
   isActive    Boolean      @default(true) // false = hidden from the catalog
   popularity  Float        @default(0) // TMDB popularity, refreshed by the sync; picks the home hero
+  trailerKey  String? // YouTube video id of the trailer (from TMDB videos); null = no trailer
   genres      MovieGenre[]
   showtimes   Showtime[]
 }
