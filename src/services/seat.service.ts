@@ -30,7 +30,7 @@ export function getRowTier(rowLabel: string): SeatTier {
  */
 export async function getShowtimeSeatMap(
   showtimeId: string,
-  currentUserId?: string
+  currentUserId?: string,
 ): Promise<ShowtimeSeatMapResponse | null> {
   const now = new Date();
 
@@ -67,7 +67,12 @@ export async function getShowtimeSeatMap(
   // Map: seatId -> { isBooked: boolean, isHeld: boolean, heldUntil: Date | null, isHeldByMe: boolean }
   const seatStatusMap = new Map<
     string,
-    { isBooked: boolean; isHeld: boolean; heldUntil: Date | null; isHeldByMe: boolean }
+    {
+      isBooked: boolean;
+      isHeld: boolean;
+      heldUntil: Date | null;
+      isHeldByMe: boolean;
+    }
   >();
 
   for (const bs of showtime.seats) {
@@ -107,7 +112,9 @@ export async function getShowtimeSeatMap(
     } else if (statusInfo?.isHeld) {
       status = "HELD";
       isHeldByMe = statusInfo.isHeldByMe;
-      heldUntilStr = statusInfo.heldUntil ? statusInfo.heldUntil.toISOString() : null;
+      heldUntilStr = statusInfo.heldUntil
+        ? statusInfo.heldUntil.toISOString()
+        : null;
     } else {
       status = "AVAILABLE";
       availableCount++;
@@ -179,147 +186,155 @@ export async function holdShowtimeSeats(params: {
   const heldUntil = new Date(Date.now() + HOLD_DURATION_MS);
 
   try {
-    return await prisma.$transaction(async (tx) => {
-      const showtime = await tx.showtime.findUnique({
-        where: { id: showtimeId },
-        select: { screenId: true, movie: { select: { isActive: true } } },
-      });
-
-      if (!showtime) {
-        return { success: false, error: "Showtime not found" };
-      }
-      if (!showtime.movie.isActive) {
-        return { success: false, error: MOVIE_NOT_ON_SALE }; // hidden by an admin: off sale
-      }
-
-      // 1. Fetch requested seats to calculate total (only seats in this showtime's screen)
-      const seats = await tx.seat.findMany({
-        where: { id: { in: seatIds }, screenId: showtime.screenId },
-      });
-
-      if (seats.length !== seatIds.length) {
-        return { success: false, error: "One or more invalid seats selected" };
-      }
-
-      const totalAmount = seats.reduce((sum, s) => sum + Number(s.price), 0);
-
-      // 2. Check for conflicting active bookings or holds
-      const existingBookings = await tx.bookingSeat.findMany({
-        where: {
-          showtimeId,
-          seatId: { in: seatIds },
-        },
-        include: {
-          booking: {
-            select: { id: true, userId: true, status: true },
-          },
-        },
-      });
-
-      for (const bs of existingBookings) {
-        // Seat already purchased
-        if (bs.booking.status === "PAID") {
-          return {
-            success: false,
-            error: "Seat is already booked by another customer.",
-          };
-        }
-
-        // Seat held by another user
-        if (
-          bs.booking.status === "PENDING" &&
-          bs.booking.userId !== userId &&
-          bs.heldUntil &&
-          new Date(bs.heldUntil) > now
-        ) {
-          return {
-            success: false,
-            error: "Seat is temporarily held by another customer. Please choose different seats.",
-          };
-        }
-      }
-
-      // 3. Find or create user's PENDING booking for this showtime
-      const existing = await tx.booking.findFirst({
-        where: {
-          showtimeId,
-          userId,
-          status: "PENDING",
-        },
-        include: { payment: { select: { status: true } } },
-      });
-
-      // Phase 9: seats are locked while a PromptPay payment is open. Expired payments were
-      // already closed by closeExpiredPaymentsForSeats() in the hold route.
-      if (existing?.payment) {
-        return {
-          success: false,
-          error: "You have a PromptPay payment in progress. Finish or cancel it before changing seats.",
-        };
-      }
-
-      let booking: { id: string };
-      if (existing) {
-        booking = existing;
-        // Update total
-        await tx.booking.update({
-          where: { id: booking.id },
-          data: { totalAmount },
+    return await prisma.$transaction(
+      async (tx) => {
+        const showtime = await tx.showtime.findUnique({
+          where: { id: showtimeId },
+          select: { screenId: true, movie: { select: { isActive: true } } },
         });
 
-        // Clean up previous held seats for this booking that are no longer selected
-        await tx.bookingSeat.deleteMany({
+        if (!showtime) {
+          return { success: false, error: "Showtime not found" };
+        }
+        if (!showtime.movie.isActive) {
+          return { success: false, error: MOVIE_NOT_ON_SALE }; // hidden by an admin: off sale
+        }
+
+        // 1. Fetch requested seats to calculate total (only seats in this showtime's screen)
+        const seats = await tx.seat.findMany({
+          where: { id: { in: seatIds }, screenId: showtime.screenId },
+        });
+
+        if (seats.length !== seatIds.length) {
+          return {
+            success: false,
+            error: "One or more invalid seats selected",
+          };
+        }
+
+        const totalAmount = seats.reduce((sum, s) => sum + Number(s.price), 0);
+
+        // 2. Check for conflicting active bookings or holds
+        const existingBookings = await tx.bookingSeat.findMany({
           where: {
-            bookingId: booking.id,
-            seatId: { notIn: seatIds },
-          },
-        });
-      } else {
-        booking = await tx.booking.create({
-          data: {
-            userId,
             showtimeId,
-            status: "PENDING",
-            totalAmount,
+            seatId: { in: seatIds },
           },
-        });
-      }
-
-      // 4. Upsert BookingSeat records with heldUntil
-      for (const seat of seats) {
-        await tx.bookingSeat.upsert({
-          where: {
-            showtimeId_seatId: {
-              showtimeId,
-              seatId: seat.id,
+          include: {
+            booking: {
+              select: { id: true, userId: true, status: true },
             },
           },
-          update: {
-            bookingId: booking.id,
-            priceAtPurchase: seat.price,
-            heldUntil,
-          },
-          create: {
-            bookingId: booking.id,
-            showtimeId,
-            seatId: seat.id,
-            priceAtPurchase: seat.price,
-            heldUntil,
-          },
         });
-      }
 
-      return {
-        success: true,
-        bookingId: booking.id,
-        heldUntil,
-      };
-    }, {
-      // RepeatableRead makes a concurrent hold on the same BookingSeat row fail with a
-      // serialization error instead of silently overwriting the other customer's hold.
-      // Concurrent inserts of a new row are already rejected by @@unique([showtimeId, seatId]).
-      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
-    });
+        for (const bs of existingBookings) {
+          // Seat already purchased
+          if (bs.booking.status === "PAID") {
+            return {
+              success: false,
+              error: "Seat is already booked by another customer.",
+            };
+          }
+
+          // Seat held by another user
+          if (
+            bs.booking.status === "PENDING" &&
+            bs.booking.userId !== userId &&
+            bs.heldUntil &&
+            new Date(bs.heldUntil) > now
+          ) {
+            return {
+              success: false,
+              error:
+                "Seat is temporarily held by another customer. Please choose different seats.",
+            };
+          }
+        }
+
+        // 3. Find or create user's PENDING booking for this showtime
+        const existing = await tx.booking.findFirst({
+          where: {
+            showtimeId,
+            userId,
+            status: "PENDING",
+          },
+          include: { payment: { select: { status: true } } },
+        });
+
+        // Phase 9: seats are locked while a PromptPay payment is open. Expired payments were
+        // already closed by closeExpiredPaymentsForSeats() in the hold route.
+        if (existing?.payment) {
+          return {
+            success: false,
+            error:
+              "You have a PromptPay payment in progress. Finish or cancel it before changing seats.",
+          };
+        }
+
+        let booking: { id: string };
+        if (existing) {
+          booking = existing;
+          // Update total
+          await tx.booking.update({
+            where: { id: booking.id },
+            data: { totalAmount },
+          });
+
+          // Clean up previous held seats for this booking that are no longer selected
+          await tx.bookingSeat.deleteMany({
+            where: {
+              bookingId: booking.id,
+              seatId: { notIn: seatIds },
+            },
+          });
+        } else {
+          booking = await tx.booking.create({
+            data: {
+              userId,
+              showtimeId,
+              status: "PENDING",
+              totalAmount,
+            },
+          });
+        }
+
+        // 4. Upsert BookingSeat records with heldUntil
+        for (const seat of seats) {
+          await tx.bookingSeat.upsert({
+            where: {
+              showtimeId_seatId: {
+                showtimeId,
+                seatId: seat.id,
+              },
+            },
+            update: {
+              bookingId: booking.id,
+              priceAtPurchase: seat.price,
+              heldUntil,
+            },
+            create: {
+              bookingId: booking.id,
+              showtimeId,
+              seatId: seat.id,
+              priceAtPurchase: seat.price,
+              heldUntil,
+            },
+          });
+        }
+
+        return {
+          success: true,
+          bookingId: booking.id,
+          heldUntil,
+        };
+      },
+      {
+        // RepeatableRead makes a concurrent hold on the same BookingSeat row fail with a
+        // serialization error instead of silently overwriting the other customer's hold.
+        // Concurrent inserts of a new row are already rejected by @@unique([showtimeId, seatId]).
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      },
+    );
   } catch (error) {
     // Losing a race for the same seat is expected, not a crash:
     // P2002 = unique constraint on (showtimeId, seatId), P2034 = RepeatableRead write conflict
@@ -328,11 +343,12 @@ export async function holdShowtimeSeats(params: {
       (error.code === "P2002" || error.code === "P2034")
     ) {
       console.warn(
-        `[SeatService] hold conflict (${error.code}) showtime=${showtimeId} seats=${seatIds.length}`
+        `[SeatService] hold conflict (${error.code}) showtime=${showtimeId} seats=${seatIds.length}`,
       );
       return {
         success: false,
-        error: "This seat was just taken by another customer. Please choose different seats.",
+        error:
+          "This seat was just taken by another customer. Please choose different seats.",
       };
     }
 
@@ -388,46 +404,4 @@ export async function releaseShowtimeSeats(params: {
     console.error("[SeatService] releaseShowtimeSeats error:", error);
     return { success: false };
   }
-}
-
-/**
- * Single-seat hold convenience helper (matching CiniGo_Phase_Plan.md specification)
- */
-export async function holdSeat(showtimeId: string, seatId: string, bookingId: string) {
-  const heldUntil = new Date(Date.now() + HOLD_DURATION_MS);
-  const seat = await prisma.seat.findUnique({ where: { id: seatId } });
-  if (!seat) throw new Error("Seat not found");
-
-  return prisma.bookingSeat.upsert({
-    where: {
-      showtimeId_seatId: {
-        showtimeId,
-        seatId,
-      },
-    },
-    update: {
-      bookingId,
-      priceAtPurchase: seat.price,
-      heldUntil,
-    },
-    create: {
-      bookingId,
-      showtimeId,
-      seatId,
-      priceAtPurchase: seat.price,
-      heldUntil,
-    },
-  });
-}
-
-/**
- * Single-seat release convenience helper (matching CiniGo_Phase_Plan.md specification)
- */
-export async function releaseSeat(showtimeId: string, seatId: string) {
-  return prisma.bookingSeat.deleteMany({
-    where: {
-      showtimeId,
-      seatId,
-    },
-  });
 }

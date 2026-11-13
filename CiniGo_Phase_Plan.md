@@ -165,8 +165,8 @@ Create permanent milestone branch `phase/phase6-seatmap` off `develop`. Implemen
     * `HELD` — `BookingSeat` record exists with `heldUntil > NOW` (active hold by another user).
     * `AVAILABLE` — no matching record, or `heldUntil` is expired/null.
   * Implement seat hold in `src/services/seat.service.ts`:
-    * `holdSeat(showtimeId, seatId, bookingId)` — upserts `BookingSeat` setting `heldUntil = NOW + 5 minutes`.
-    * `releaseSeat(showtimeId, seatId)` — clears `heldUntil` on cancel or expiry.
+    * ~~`holdSeat(showtimeId, seatId, bookingId)`~~ / ~~`releaseSeat(showtimeId, seatId)`~~ — superseded by `holdShowtimeSeats()` / `releaseShowtimeSeats()` (multi-seat, conflict-checked, owner-checked); the single-seat helpers were removed on 2026-11-13.
+    * Holds set `heldUntil = NOW + 5 minutes`; releasing on cancel or expiry deletes the user's held `BookingSeat` rows.
     * Expired holds (`heldUntil < NOW`) are treated as available at query time — no background cleanup job needed.
   * Merge `feature/seatmap-api` into `phase/phase6-seatmap` and delete feature branch.
 * [x] Branch `feature/seatmap-ui` off `phase/phase6-seatmap`:

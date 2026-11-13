@@ -14,7 +14,7 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx) and `CiniGo_Phase_Plan.md`
 - Held seats must belong to the showtime's screen (`seat.screenId === showtime.screenId`); prices come from the DB, never the client.
 - Deselecting a held seat releases it on the server; newly added seats must be re-locked before "Proceed to Payment". Expiry releases all of the user's held seats.
 - `SeatHoldTimer` keeps `onExpire` in a ref — don't put callbacks in its effect deps.
-- The legacy `holdSeat()` helper upserts without any conflict check and is unused. In Phase 7, use `holdShowtimeSeats()` (or add a conflict check) rather than `holdSeat()`.
+- The legacy single-seat helpers `holdSeat()`/`releaseSeat()` were removed (2026-11-13): unused, and unsafe (no conflict check / no owner check). Use `holdShowtimeSeats()` and `releaseShowtimeSeats()`.
 
 ## Checkout & tickets (Phase 7)
 - Simulated payment: `confirmBookingPayment()` in `src/services/booking.service.ts` requires an active hold, re-prices from `Seat`, and writes Booking/Payment/Ticket in one `RepeatableRead` transaction. With Stripe, the only path to `PAID` is `settleSucceededPayment()` (Phase 9).
