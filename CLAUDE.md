@@ -2,7 +2,7 @@
 
 # CineGo project notes
 
-Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (phase checklist) and `Phase10_Testing_Checklist.md` (manual test run). The old step-by-step `Phase*_Guide.md` files were removed before submission (still in Git history). Check them before deciding whether behavior is intended.
+Specs live in `CiniGo_Scope.md` (requirements, FR-xx) and `CiniGo_Phase_Plan.md` (phase checklist). The old step-by-step `Phase*_Guide.md` files and `Phase10_Testing_Checklist.md` (manual test run) were removed (still in Git history). Check them before deciding whether behavior is intended.
 
 ## Git workflow
 - `feature/*` → `phase/phaseN-*` → `develop`. Phase branches are kept on GitHub after merging.
@@ -23,6 +23,12 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx), `CiniGo_Phase_Plan.md` (p
 - `npm run test:concurrency` races holds/payments against the real DB (needs a future showtime; cleans up its own test users).
 - `npm run dev:ticket -- <customer email> [--seats N] [--within MIN]` (DEV ONLY, refuses in production): books a paid ticket for the next show starting within 60 min via the real hold → simulated-payment flow, and prints the ticket URL and code for scanner testing.
 - Seed creates `admin@cinego.com` / `admin123`. Re-running the seed wipes ALL data, including users.
+
+## Navbar / layout
+- The root layout reads the session on the server (`getServerSession`) and passes it to `SessionProvider`, so the navbar's first paint is already logged-in/out correctly. Without it, every reload drew the logged-out bar, then re-drew it after `/api/auth/session` (links popped in, the pill jumped). This makes every page dynamic; that is intended.
+- After a successful login, navigate with `window.location.assign()`, not `router.push()` + `router.refresh()`: the client router keeps links prefetched while logged out (a showtime's `/checkout` → redirect to `/login`) and push replays that stale redirect, so the user stays on /login (caught by `e2e/showtimes.spec.ts`).
+- Desktop navbar is a `1fr | auto | 1fr` grid so the link pill stays centred whatever the right side holds.
+- Tab icon = `src/app/icon.svg` (no `favicon.ico`).
 
 ## Browsing → booking (Phase 10)
 - Movie cards and the hero open `/movies/[id]` (showtime picker: `getMovieWithShowtimes()`), never a checkout directly. Group showtimes by Bangkok day with `cinemaDayOf()`; always `orderBy: { startsAt: "asc" }` when picking a "next" showtime.

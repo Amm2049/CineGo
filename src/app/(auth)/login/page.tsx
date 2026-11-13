@@ -8,7 +8,7 @@ import { signInWithCredentials } from "@/lib/credentials-sign-in";
 import { GOOGLE_SIGN_IN_ERRORS, type GoogleSignInRefusal } from "@/lib/google-sign-in";
 import { postLoginPath } from "@/lib/roles";
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const USE_GOOGLE_MESSAGE = "This account was created with Google. Use “Continue with Google” below.";
@@ -38,7 +38,6 @@ function ErrorFromUrl() {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -57,8 +56,10 @@ export default function LoginPage() {
       // Back to the page that asked for login (if this role may use it), else the role's home:
       // admin → /admin, staff → scanner, customer → /. Read at submit time: no useSearchParams Suspense needed.
       const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
-      router.push(postLoginPath(callbackUrl, role));
-      router.refresh();
+      // Full page load, not router.push + refresh: links prefetched while logged out (e.g. a showtime's
+      // /checkout → redirect to /login) stay cached in the client router, and push would replay that
+      // stale redirect. A real navigation asks the server again with the new session cookie.
+      window.location.assign(postLoginPath(callbackUrl, role));
     } else if (outcome === "invalid") {
       setError("Invalid email or password. Please try again.");
     } else if (outcome === "google") {

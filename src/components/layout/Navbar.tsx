@@ -22,9 +22,10 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#2500f0]/35 bg-[#040412]/85 backdrop-blur-2xl shadow-xl shadow-[#2500f0]/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
+      {/* Three columns on desktop (1fr | auto | 1fr) keep the link pill centred whatever the right side holds */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4 md:grid md:grid-cols-[1fr_auto_1fr]">
         {/* Brand Identity */}
-        <Link href="/" className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-3 group justify-self-start">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2500f0] to-[#12008a] p-[1px] shadow-lg shadow-[#2500f0]/60 group-hover:shadow-[#2500f0] transition-all duration-300">
             <div className="w-full h-full bg-[#070822] rounded-[11px] flex items-center justify-center border-t border-white/30">
               <span className="text-xl">🎬</span>
@@ -87,7 +88,7 @@ export default function Navbar() {
         </nav>
 
         {/* User Auth & Actions */}
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3 justify-self-end">
           {isLoading ? (
             <div className="h-9 w-24 rounded-xl bg-white/[0.06] animate-pulse" />
           ) : session ? (

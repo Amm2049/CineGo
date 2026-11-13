@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { getServerSession } from "next-auth";
 import "./globals.css";
+import { authOptions } from "@/lib/auth";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import Navbar from "@/components/layout/Navbar";
 
@@ -28,7 +30,10 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  // Read the session on the server so the navbar's first paint is already correct (no jump on reload)
+  const session = await getServerSession(authOptions);
+
   return (
     <html
       lang="en"
@@ -48,7 +53,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <div className="absolute bottom-5 left-10 w-[700px] h-[700px] bg-[#2500f0]/18 rounded-full blur-[160px] opacity-70" />
         </div>
 
-        <SessionProvider>
+        <SessionProvider session={session}>
           <Navbar />
           {children}
         </SessionProvider>
