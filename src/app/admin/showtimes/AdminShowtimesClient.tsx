@@ -12,16 +12,18 @@ import {
   computeEndsAt,
   formatCinemaDate,
   formatCinemaTime,
+  isReleasedOn,
   nextFreeStart,
   rangesOverlap,
   todayInCinemaTz,
 } from "@/lib/schedule";
 import { useToasts, ToastStack } from "@/components/admin/Toasts";
+import CinemaDatePicker from "@/components/admin/CinemaDatePicker";
 
 interface Props {
   day: string; // "YYYY-MM-DD", the one date shared by the form and the schedule
   nowIso: string;
-  movies: { id: string; title: string; duration: number }[];
+  movies: { id: string; title: string; duration: number; releaseDate: string }[]; // all active, upcoming too
   screens: { id: string; name: string; format: string }[];
   showtimes: AdminShowtimeRow[];
 }
@@ -37,7 +39,12 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
   const today = todayInCinemaTz(now);
   const pastDay = day < today;
 
-  const [movieId, setMovieId] = useState(movies[0]?.id ?? "");
+  // Only movies already out on the form's day; upcoming ones appear once the date reaches their release
+  const available = movies.filter((m) => isReleasedOn(m.releaseDate, day));
+  const notYetOut = movies.length - available.length;
+
+  // The admin's pick, kept across days; it falls back to the first movie out on this day when it isn't
+  const [pickedMovieId, setPickedMovieId] = useState(available[0]?.id ?? "");
   const [screenId, setScreenId] = useState(screens[0]?.id ?? "");
   // null = use the suggested free time; set once the admin picks a time themselves
   const [chosenTime, setChosenTime] = useState<string | null>(null);
@@ -52,7 +59,8 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
     setChosenTime(null);
   }
 
-  const movie = movies.find((m) => m.id === movieId);
+  const movie = available.find((m) => m.id === pickedMovieId) ?? available[0];
+  const movieId = movie?.id ?? "";
   const screen = screens.find((s) => s.id === screenId);
   const busy = showtimes.filter((s) => s.screenId === screenId);
 
@@ -83,6 +91,7 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
 
   let problem: string | null = null;
   if (pastDay) problem = "This day is over. Pick today or a later date.";
+  else if (!movie) problem = "No movie is out yet on this day. Pick a later date.";
   else if (!time) problem = `${screen?.name ?? "This theatre"} has no free time left on this day.`;
   else if (inPast) problem = "That time has already passed.";
   else if (clash)
@@ -134,7 +143,6 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
     }
   }
 
-  const inputCls = "w-full min-w-0 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white";
   const labelCls = "block text-xs font-semibold uppercase tracking-wider text-zinc-400";
   const navBtn =
     "flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/15 px-3 text-sm font-semibold text-zinc-200 hover:bg-white/[0.06] sm:min-h-9 sm:min-w-9";
@@ -147,29 +155,35 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
       >
         <h1 className="text-xl font-black text-white">Add showtime</h1>
 
-        <label className={labelCls}>
+        <div className={labelCls}>
           Date
-          <input
-            type="date"
-            value={day}
-            min={today}
-            onChange={(e) => goToDay(e.target.value)}
-            className={`mt-1 ${inputCls}`}
-          />
+          <CinemaDatePicker label="Date" value={day} min={today} today={today} onChange={goToDay} />
+          <input type="hidden" name="date" value={day} />
           <span className="mt-1 block text-[11px] normal-case tracking-normal text-zinc-500">
-            {formatCinemaDate(day)} · the schedule below shows this day
+            The schedule beside this form shows the same day
           </span>
-        </label>
+        </div>
 
         <label className={labelCls}>
           Movie
-          <select value={movieId} onChange={(e) => setMovieId(e.target.value)} className={`mt-1 ${inputCls}`}>
-            {movies.map((m) => (
+          <select
+            value={movieId}
+            onChange={(e) => setPickedMovieId(e.target.value)}
+            disabled={available.length === 0}
+            className="cine-select mt-1 normal-case tracking-normal"
+          >
+            {available.length === 0 && <option value="">No movies out on this day</option>}
+            {available.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.title} ({m.duration} min)
               </option>
             ))}
           </select>
+          {notYetOut > 0 && (
+            <span className="mt-1 block text-[11px] normal-case tracking-normal text-zinc-500">
+              {notYetOut} upcoming {notYetOut === 1 ? "movie opens" : "movies open"} after this date
+            </span>
+          )}
         </label>
 
         <label className={labelCls}>
@@ -180,7 +194,7 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
               setScreenId(e.target.value);
               setTheatreFilter(e.target.value); // show that theatre's day while picking a time
             }}
-            className={`mt-1 ${inputCls}`}
+            className="cine-select mt-1 normal-case tracking-normal"
           >
             {screens.map((s) => (
               <option key={s.id} value={s.id}>
@@ -197,7 +211,7 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
               aria-label="Hour"
               value={hour}
               onChange={(e) => setChosenTime(`${e.target.value}:${minute || "00"}`)}
-              className={`${inputCls} font-mono`}
+              className="cine-select font-mono"
             >
               {!hour && <option value="">--</option>}
               {HOURS.map((h) => (
@@ -211,7 +225,7 @@ export default function AdminShowtimesClient({ day, nowIso, movies, screens, sho
               aria-label="Minute"
               value={minute}
               onChange={(e) => setChosenTime(`${hour || "00"}:${e.target.value}`)}
-              className={`${inputCls} font-mono`}
+              className="cine-select font-mono"
             >
               {!minute && <option value="">--</option>}
               {MINUTES.map((m) => (

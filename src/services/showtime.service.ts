@@ -6,8 +6,11 @@ import prisma from "@/lib/prisma";
 import {
   CINEMA_UTC_OFFSET,
   CLEANING_BUFFER_MINUTES,
+  cinemaDayOf,
   computeEndsAt,
+  formatCinemaDate,
   formatCinemaTime,
+  isReleasedOn,
 } from "@/lib/schedule";
 
 const MINUTE_MS = 60_000;
@@ -66,11 +69,19 @@ async function insertIfScreenFree(
 ): Promise<ShowtimeResult> {
   const movie = await tx.movie.findUnique({
     where: { id: input.movieId },
-    select: { duration: true, isActive: true },
+    select: { duration: true, isActive: true, releaseDate: true },
   });
   if (!movie) return { success: false, error: "Movie not found.", status: 404 };
   if (!movie.isActive) {
     return { success: false, error: "This movie is hidden. Activate it first.", status: 409 };
+  }
+  // Same rule as the form's movie list: no shows before the Thai release day
+  if (!isReleasedOn(movie.releaseDate, cinemaDayOf(input.startsAt))) {
+    return {
+      success: false,
+      status: 409,
+      error: `This movie opens on ${formatCinemaDate(cinemaDayOf(movie.releaseDate))}. Pick that day or later.`,
+    };
   }
 
   const screen = await tx.screen.findUnique({ where: { id: input.screenId }, select: { id: true } });
@@ -145,14 +156,15 @@ export async function getShowtimeFormOptions() {
     prisma.movie.findMany({
       where: { isActive: true },
       orderBy: { title: "asc" },
-      select: { id: true, title: true, duration: true },
+      select: { id: true, title: true, duration: true, releaseDate: true },
     }),
     prisma.screen.findMany({
       orderBy: { number: "asc" },
       select: { id: true, name: true, format: true },
     }),
   ]);
-  return { movies, screens };
+  // All active movies, upcoming included: the form filters them by the chosen day (isReleasedOn)
+  return { movies: movies.map((m) => ({ ...m, releaseDate: m.releaseDate.toISOString() })), screens };
 }
 
 /** Only empty showtimes can be deleted; moving a sold show would change what customers paid for. */

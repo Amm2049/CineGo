@@ -26,7 +26,7 @@ test("the form suggests a free time, blocks a clash and offers the next free tim
 
   try {
     // The form date is the schedule date
-    await expect(form.locator('input[type="date"]')).toHaveValue(day);
+    await expect(form.locator('input[name="date"]')).toHaveValue(day);
     // Pick Theatre 4 so the test doesn't depend on which movie is first
     await form.getByLabel("Theatre").selectOption({ label: "Theatre 4 · Standard" });
     // The schedule follows the form's theatre: only Theatre 4 is listed, its chip is pressed
@@ -59,7 +59,7 @@ test("the form suggests a free time, blocks a clash and offers the next free tim
     // Day navigation: › and ‹ move the schedule and the form together
     await page.getByRole("link", { name: "Next day" }).click();
     await expect(page).toHaveURL(`/admin/showtimes?date=${bangkokDay(31)}`);
-    await expect(form.locator('input[type="date"]')).toHaveValue(bangkokDay(31));
+    await expect(form.locator('input[name="date"]')).toHaveValue(bangkokDay(31));
     await page.getByRole("link", { name: "Previous day" }).click();
     await expect(page).toHaveURL(`/admin/showtimes?date=${day}`);
 

@@ -42,6 +42,15 @@ export function cinemaDayOf(value: Date | string): string {
   return todayInCinemaTz(new Date(value));
 }
 
+/**
+ * Is a movie out in Thailand on `day` ("YYYY-MM-DD", Bangkok)? Compares calendar days, never instants:
+ * TMDB dates are stored as midnight UTC (07:00 Bangkok), so a timestamp check would hide a movie
+ * for the first hours of its opening day. The admin form and createShowtime() both use this.
+ */
+export function isReleasedOn(releaseDate: Date | string, day: string): boolean {
+  return cinemaDayOf(releaseDate) <= day;
+}
+
 /** Add whole days to a "YYYY-MM-DD" day (no time zone involved: pure calendar arithmetic). */
 export function addCinemaDays(day: string, days: number): string {
   const d = new Date(`${day}T00:00:00Z`);

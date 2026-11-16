@@ -8,6 +8,7 @@ import {
   nextFreeStart,
   computeEndsAt,
   formatCinemaTime,
+  isReleasedOn,
   rangesOverlap,
   todayInCinemaTz,
 } from "@/lib/schedule";
@@ -84,5 +85,20 @@ describe("nextFreeStart (Add showtime form)", () => {
   it("returns null when nothing can start before midnight", () => {
     const late = [{ startsAt: t("10:00"), endsAt: t("23:50") }];
     expect(nextFreeStart({ day: "2026-11-05", durationMinutes: 90, busy: late, from: t("11:00") })).toBeNull();
+  });
+});
+
+describe("isReleasedOn (Bangkok calendar days)", () => {
+  it("counts a TMDB date (midnight UTC) as out for the whole opening day", () => {
+    const tmdb = "2026-11-20T00:00:00.000Z"; // 07:00 Bangkok on the 20th
+    expect(isReleasedOn(tmdb, "2026-11-19")).toBe(false);
+    expect(isReleasedOn(tmdb, "2026-11-20")).toBe(true);
+    expect(isReleasedOn(tmdb, "2026-11-21")).toBe(true);
+  });
+  it("uses the Bangkok day, not the UTC day, for any other time", () => {
+    // 20:00 UTC on the 19th is already 03:00 on the 20th in Bangkok
+    const late = new Date("2026-11-19T20:00:00Z");
+    expect(isReleasedOn(late, "2026-11-19")).toBe(false);
+    expect(isReleasedOn(late, "2026-11-20")).toBe(true);
   });
 });
