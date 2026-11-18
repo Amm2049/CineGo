@@ -1,32 +1,47 @@
-# 🎬 CineGo — Cinema Ticket Booking System
+# 🎬 CineGo: Cinema Ticket Booking System
 
-A full-stack cinema ticket booking web application built with **Next.js App Router**, **TypeScript**, **Tailwind CSS**, **PostgreSQL + Prisma ORM**, **Auth.js**, and the **Google Gemini LLM API**.
+CineGo is a full-stack web app for booking cinema tickets. Customers browse movies, pick a showtime, choose seats on a live seat map, pay with PromptPay, and get one QR ticket per seat. Staff scan the tickets at the door, and admins manage movies and showtimes.
+
+**Live demo:** https://cinego-nu.vercel.app (Stripe **test mode**, so no real money is charged)
+
+Built for the Software Engineering course at Rangsit University (RSU).
 
 ---
 
 ## ✨ Features
 
-| Feature | Status |
-|---|---|
-| 🤖 AI Movie Recommendations (Gemini) | Phase 6 |
-| 🎬 Movie Catalog & Showtime Browser | Phase 4 |
-| 💺 Interactive Seat Map + Dynamic Pricing | Phase 5 |
-| 🎟️ Digital QR Ticket Pass (one QR per seat) | Phase 7 |
-| 🔐 Auth + Role-Based Access | Phase 3 |
-| 🗄️ PostgreSQL + Prisma ORM | Phase 2 |
-| 📷 Admin WebCam QR Scanner (one scan admits one seat) | Phase 8 |
+**Customers**
+- Browse **Now Showing** and **Coming Soon** movies (synced from TMDB with Thai release dates), with trailers
+- Pick a day and time on the movie page, then choose seats on a **live seat map**
+  - 4 theatres × 60 seats, three price tiers: Standard ฿150 (front), Premium ฿200, VIP ฿280 (back)
+  - Seats are **held for you** while you pay, so two customers can never buy the same seat
+- Pay with **PromptPay** through Stripe (QR code, confirmed by webhook)
+- **One QR ticket per seat**, listed under *My Tickets*
+- **AI match badges** (Google Gemini) based on favourite genres and booking history
+- Sign up with email + password or **Continue with Google**
+
+**Staff**
+- **QR scanner** in the browser (webcam). One scan admits one seat, and a ticket can't be used twice or too early
+
+**Admins**
+- Manage movies: sync the latest releases from TMDB, hide or show a movie
+- Manage showtimes: the server blocks clashes (25-minute cleaning buffer), past times, and shows before a movie's release day
+- Dashboard with tickets sold
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Framework:** Next.js 16 (App Router) + TypeScript
-- **Styling:** Tailwind CSS v4 + Dark Cinema Theme
-- **Database:** PostgreSQL + Prisma ORM
-- **Auth:** Auth.js (NextAuth) + bcrypt
-- **AI:** Google Gemini LLM API (`@google/genai`)
-- **Testing:** Vitest + @testing-library/react + Playwright (E2E)
-- **Deployment:** Vercel + Supabase/Neon
+| Area | Tools |
+|---|---|
+| Framework | Next.js 16 (App Router), React 19, TypeScript |
+| Styling | Tailwind CSS 4 |
+| Database | PostgreSQL (Neon) + Prisma 7 |
+| Auth | NextAuth (credentials + Google), bcrypt, role-based access (Customer / Staff / Admin) |
+| Payments | Stripe PromptPay (test mode), with a simulated provider for local work and CI |
+| External APIs | TMDB (movies, trailers), Google Gemini (recommendations) |
+| Testing | Vitest + Testing Library (unit, integration), Playwright (end-to-end) |
+| CI/CD | GitHub Actions, Vercel (region `sin1`, Singapore) |
 
 ---
 
@@ -34,92 +49,114 @@ A full-stack cinema ticket booking web application built with **Next.js App Rout
 
 ### Prerequisites
 - Node.js 22+
-- PostgreSQL database (local or Supabase/Neon)
+- A PostgreSQL database (local, or a free [Neon](https://neon.tech) project)
+- Optional keys: TMDB (live movies; without it the seed uses built-in movies), Gemini, Google sign-in, Stripe
 
-### Installation
+### Setup
 
 ```bash
-# 1. Clone the repository
-git clone <repo-url>
-cd cinego
+git clone https://github.com/Amm2049/CineGo.git
+cd CineGo
+npm install                      # also runs prisma generate
 
-# 2. Install dependencies
-npm install
+cp .env.example .env             # then fill in the values (see comments in the file)
 
-# 3. Set up environment variables
-cp .env.example .env.local
-# Fill in .env.local with your values
-
-# 4. Run development server
-npm run dev
+npx prisma migrate deploy        # create the tables
+npx prisma db seed               # demo cinema, seats, movies, showtimes and accounts
+npm run dev                      # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see CineGo.
+> ⚠️ The seed **deletes all data** before it fills the database. Never run it against production.
+
+### Demo accounts (local seed only)
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@cinego.com` | `admin123` |
+| Staff | `staff@cinego.com` | `staff123` |
+
+Customers register on the site. Production uses different passwords.
+
+### Payments
+
+- Leave `PAYMENT_PROVIDER` empty to use the **simulated** payment (no Stripe needed).
+- Set `PAYMENT_PROVIDER=stripe` plus test keys to use **Stripe PromptPay**. Run `npm run stripe:listen` to forward webhooks locally. Live keys are refused on purpose.
 
 ---
 
-## 🧪 Testing (TDD)
+## 🧪 Testing
 
-This project follows **Test-Driven Development (Red → Green → Refactor)**.
+| Command | What it runs |
+|---|---|
+| `npm test` | Unit tests (Vitest) |
+| `npm run test:integration` | Payment and booking services against a real database |
+| `npm run test:concurrency` | Races seat holds and payments to prove no seat is sold twice |
+| `npm run test:e2e` | End-to-end browser tests (Playwright) |
+| `npm run lint` | ESLint |
 
-```bash
-# Run all tests
-npm run test
-
-# Watch mode
-npm run test:watch
-
-# With coverage report
-npm run test:coverage
-
-# Lint check
-npm run lint
-```
+CI (GitHub Actions) runs all of these on every push to `main`, `develop`, `phase/**` and `feature/**`, against a fresh Postgres 16 database.
 
 ---
 
 ## 📁 Project Structure
 
 ```
+prisma/              schema, migrations, seed
+scripts/             production setup, dev tools, Vercel build
 src/
-├── app/                # Next.js App Router pages & API routes
-│   ├── (auth)/         # Login & Register
-│   ├── (customer)/     # Movies, seat map, tickets, checkout
-│   ├── admin/          # Admin dashboard & QR scanner
-│   └── api/            # API route handlers
-├── components/         # Reusable React UI components
-│   ├── ui/             # shadcn/ui primitives
-│   ├── layout/         # Navbar, Footer
-│   ├── movies/         # MovieCard, recommendation carousel
-│   ├── seatmap/        # Interactive seat grid
-│   └── admin/          # WebCam QR scanner
-├── lib/                # Infrastructure & utilities
-│   ├── prisma.ts       # Prisma client singleton
-│   ├── auth.ts         # Auth.js configuration
-│   ├── gemini.ts       # Gemini API client
-│   └── utils.ts        # cn(), formatDuration(), formatPrice()
-├── services/           # Business logic (separation of concerns)
-├── types/              # TypeScript interfaces
-└── tests/              # Unit, integration & E2E tests
+├── app/             pages and API routes (Next.js App Router)
+│   ├── (auth)/          login, register
+│   ├── (customer)/      movies, checkout (seat map), tickets, profile
+│   ├── admin/           dashboard, movies, showtimes, scanner
+│   └── api/             REST endpoints, Stripe webhook, cron
+├── components/      UI by feature (seatmap, checkout, tickets, admin, …)
+├── services/        business logic (booking, payment, seat, showtime, …)
+├── lib/             auth, Prisma client, Stripe, TMDB, Gemini, helpers
+└── tests/           unit and integration tests
+e2e/                 Playwright tests
 ```
 
 ---
 
-## 🗺️ Development Roadmap
+## ☁️ Deployment
 
-| Phase | Deliverable | Status |
-|---|---|---|
-| **Phase 1** | Project Setup & Clean Architecture | ✅ Done |
-| **Phase 2** | Database Schema & Seed Data | 🔜 |
-| **Phase 3** | Authentication & Security | 🔜 |
-| **Phase 4** | Movie Catalog & User Profile | 🔜 |
-| **Phase 5** | Seat Map & SWR Polling | 🔜 |
-| **Phase 6** | AI Recommendations (Gemini) | 🔜 |
-| **Phase 7** | Checkout, Concurrency & QR Ticket | 🔜 |
-| **Phase 8** | Admin Panel & WebCam Scanner | 🔜 |
+- Every push to `main` deploys to Vercel. The build runs `prisma migrate deploy` first.
+- Production has its own Neon database. Fill an empty one with `npm run setup:production` (a dry run that only shows what would change), then `npm run setup:production -- --apply` (only adds, never deletes).
+- A weekly Vercel cron (`/api/cron/sync-movies`, Mondays) refreshes movies from TMDB.
+
+---
+
+## 🌿 Branches
+
+`feature/*` → `phase/phaseN-*` → `develop` → `main`
+
+The `phase/phase1-setup` … `phase/phase10-testing` branches keep the history of each development phase.
+
+| Phase | Deliverable |
+|---|---|
+| 1 | Project setup |
+| 2 | Database schema and seed data |
+| 3 | Authentication and roles |
+| 4 | Movie catalogue (TMDB) |
+| 5 | AI recommendations (Gemini) |
+| 6 | Live seat map and seat holds |
+| 7 | Checkout and QR tickets |
+| 8 | Admin panel, scanner, deployment |
+| 9 | Stripe PromptPay payments |
+| 10 | Testing and polish |
+
+---
+
+## 👥 Team
+
+| Member | Role |
+|---|---|
+| Grace | Project Manager, System Analyst, Business Analyst |
+| Billy | Developer |
+| Kimmy | Tester / QA |
 
 ---
 
 ## 📄 License
 
-MIT — Built for educational purposes at RSU Software Engineering.
+MIT. Built for educational purposes at Rangsit University.
