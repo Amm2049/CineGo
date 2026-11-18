@@ -6,6 +6,27 @@ CineGo is a full-stack web app for booking cinema tickets. Customers browse movi
 
 Built for the Software Engineering course at Rangsit University (RSU).
 
+![CineGo home page](docs/screenshots/home.jpg)
+
+---
+
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/movie-details.jpg" alt="Movie page with showtime picker"><br><sub><b>Movie page:</b> trailer, then pick a day and time (Bangkok time)</sub></td>
+    <td width="50%"><img src="docs/screenshots/seat-map.jpg" alt="Live seat map"><br><sub><b>Live seat map:</b> seats are locked for you while you pay; amber seats are held by other customers</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/promptpay.jpg" alt="PromptPay payment"><br><sub><b>PromptPay:</b> scan the QR with any Thai banking app (Stripe test mode)</sub></td>
+    <td width="50%"><img src="docs/screenshots/tickets.jpg" alt="QR tickets"><br><sub><b>Tickets:</b> one QR per seat, so each person shows their own at the door</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/admin-showtimes.jpg" alt="Admin showtimes"><br><sub><b>Admin:</b> schedule showtimes per theatre; clashes and past times are blocked</sub></td>
+    <td width="50%" align="center"><img src="docs/screenshots/mobile-home.jpg" alt="Mobile home page" width="260"><br><sub><b>Mobile:</b> works on phones, with AI match badges on movie cards</sub></td>
+  </tr>
+</table>
+
 ---
 
 ## ✨ Features
