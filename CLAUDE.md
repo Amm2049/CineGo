@@ -40,6 +40,7 @@ Specs live in `CiniGo_Scope.md` (requirements, FR-xx) and `CiniGo_Phase_Plan.md`
 
 ## Screens / theatres
 - `Screen.name` is the theatre ("Theatre 1"), `Screen.number` its number (unique per cinema), `Screen.format` the projection format ("IMAX Laser"). Format badges on movie cards read `screen.format`, never `screen.name`.
+- Seat map row order (2026-11-18, `fix/seatmap-row-order`): `SeatMap.tsx` draws rows in REVERSE (F nearest the screen, A at the back), so Standard ฿150 is at the front and VIP ฿280 (rows A–B) at the back, like a real cinema. Display only: tiers/prices per row are unchanged (`getRowTier()`, seed, setup script). Guarded by `src/tests/unit/seat-map.test.tsx`.
 
 ## Admin & deployment (Phase 8)
 - Every `/api/admin/*` route must call `requireAdmin()` or `requireStaff()` (`src/lib/admin-guard.ts`); `proxy.ts` does not cover APIs.

@@ -26,8 +26,10 @@ export default function SeatMap({
   screenName,
   isHolding,
 }: SeatMapProps) {
-  // Group seats by row
-  const rows = Array.from(new Set(seats.map((s) => s.rowLabel))).sort();
+  // Group seats by row. Drawn back-to-front from the screen: the last row (cheapest, Standard)
+  // sits nearest the screen and row A (VIP) at the back, like a real cinema. Display order only;
+  // each row keeps its own tier and price (see getRowTier in seat.service.ts).
+  const rows = Array.from(new Set(seats.map((s) => s.rowLabel))).sort().reverse();
 
   const renderSeat = (seat: SeatLayoutItem) => (
     <SeatItem
